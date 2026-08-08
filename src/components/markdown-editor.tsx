@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Heading01Icon, TextBoldIcon, TextItalicIcon, TextStrikethroughIcon } from "@hugeicons/core-free-icons";
+import { expandLoremAtCursor } from "@/lib/lorem";
 
 interface MarkdownEditorProps {
   value: string;
@@ -43,6 +44,20 @@ export function MarkdownEditor({ value, onChange, onBlur, placeholder, className
     const lineStart = value.lastIndexOf("\n", el.selectionStart - 1) + 1;
     onChange(`${value.slice(0, lineStart)}## ${value.slice(lineStart)}`);
     requestAnimationFrame(() => el.focus());
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== " " && e.key !== "Tab") return;
+    const el = e.currentTarget;
+    const expanded = expandLoremAtCursor(el.value, el.selectionStart);
+    if (!expanded) return;
+    e.preventDefault();
+    onChange(expanded.value);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(expanded.cursorPos, expanded.cursorPos);
+      resize(el);
+    });
   }
 
   if (!editing) {
@@ -105,6 +120,7 @@ export function MarkdownEditor({ value, onChange, onBlur, placeholder, className
           onChange(e.target.value);
           resize(e.target);
         }}
+        onKeyDown={handleKeyDown}
         onBlur={() => {
           setEditing(false);
           onBlur?.();

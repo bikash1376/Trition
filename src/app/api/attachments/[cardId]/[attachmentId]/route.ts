@@ -15,9 +15,16 @@ export async function GET(
   if (!attachment) return new Response("not found", { status: 404 });
 
   const separator = attachment.url.includes("?") ? "&" : "?";
-  const upstream = await fetch(
-    `${attachment.url}${separator}key=${trelloApiKey()}&token=${token}`,
-  );
+  const authedUrl = `${attachment.url}${separator}key=${trelloApiKey()}&token=${token}`;
+
+  let upstream = await fetch(authedUrl);
+
+  // Some Trello attachment URLs are already pre-signed (e.g. S3) — appending
+  // key/token can break the signature. If the authed attempt fails, retry
+  // the bare url in case it was already publicly accessible as-is.
+  if (!upstream.ok) {
+    upstream = await fetch(attachment.url);
+  }
 
   if (!upstream.ok || !upstream.body) {
     return new Response("upstream error", { status: upstream.status || 502 });

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { BookmarkIcon, File01Icon, Image02Icon, Table01Icon, TextIcon } from "@hugeicons/core-free-icons";
 import { serializeBlock } from "@/lib/trello/blocks";
+import { expandLoremAtCursor } from "@/lib/lorem";
 import type { TrelloCard, TrelloList } from "@/lib/trello/types";
 
 type PendingType = "page" | "bookmark" | "image" | "table" | null;
@@ -187,6 +188,16 @@ export function BlockComposer({ boardId, listId, pages, onCreated, onReconciled 
     if (e.key === "Escape") {
       setValue("");
       return;
+    }
+    if (e.key === " " || e.key === "Tab") {
+      const el = e.currentTarget;
+      const expanded = expandLoremAtCursor(el.value, el.selectionStart);
+      if (expanded) {
+        e.preventDefault();
+        setValue(expanded.value);
+        requestAnimationFrame(() => el.setSelectionRange(expanded.cursorPos, expanded.cursorPos));
+        return;
+      }
     }
     if (e.key !== "Enter") return;
     // Enter selects a highlighted slash-command option; otherwise it's a normal newline

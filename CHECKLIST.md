@@ -2,7 +2,7 @@
 
 Tracks current build phase. Update this file whenever a phase starts/finishes — don't let it go stale.
 
-**Current phase: paused here at the user's request (stop point for a git commit). Session covered: Home/Workspace sidebar restructure + persistence-bug fix, 5 block types (Text/Page/Table/Bookmark/Image) now all editable/deletable via hover actions, full table (sort/filter/inline editing, single-select Status), Markdown rich text, debounced+optimistic writes, workspace creation/invite/settings UI, label management, loading skeletons + nav spinners. `eslint` is clean throughout; `next build`'s typecheck is unverifiable here while a concurrent `next dev` process is running (corrupts `.next/dev/types` mid-write — not a code issue, see note below). See "What's left" at the bottom for the honest remaining list.**
+**Current phase: fixed a real Vercel build break (Base UI `TooltipProvider` prop was `delay`, not Radix's `delayDuration` — only surfaced on a clean build, not locally), added a unified sidebar open/close toggle (mobile drawer + desktop collapse, same button/state), made the attachment proxy more resilient, and added a `loremN` → N-word expansion shortcut everywhere text is typed. Not yet committed — awaiting the go-ahead.**
 
 **Build-verification note:** `next build`'s TypeScript pass reads `.next/dev/types/*`, which a live `next dev` process rewrites continuously. Running both at once corrupts those generated files (syntax errors in `routes.d.ts`/`validator.ts` that don't correspond to any source change). `eslint .` is unaffected and has been clean through this whole session. To get a real `next build` check, stop any running `next dev` first.
 
@@ -222,10 +222,22 @@ Reported: non-text blocks (Page/Table/Bookmark/Image links) had **no way to edit
 - [x] Block composer's default text-entry field is now a growing `<textarea>` instead of a single-line `<input>` — **Enter inserts a newline** (was previously impossible to write multi-line text), the block is created **on blur** instead of on Enter. Page/Table/Bookmark name-entry keeps the old single-line/Enter-submits behavior, since those are short names, not long-form content
 - [x] Status (`LabelPicker`) is now genuinely **single-select** — picking a new status removes whatever was previously selected instead of accumulating multiple labels; clicking the current status again clears it back to "Not started"
 
-## What's left (honest current state, 2026-08-08 end of session)
+## Phase 23 — Vercel build fix + sidebar toggle + attachment proxy resilience — done
+- [x] Fixed the actual production build break: `TooltipProvider` (Base UI, not Radix) takes `delay`, not `delayDuration`. Only caught by Vercel's clean build — local checks had been silently reading a stale `.next/types` cache left over from before the `(app)` route-group move, which masked this. Cleared it and re-verified with a clean `tsc --noEmit` + `eslint`, both clean, before pushing the fix
+- [x] `AppShell` rewritten as a client component with one shared `open` boolean driving both behaviors requested: a mobile off-canvas drawer (backdrop click closes it) and a desktop collapse/expand (sidebar width animates to 0 instead of just sliding off-screen, reclaiming the space). Single persistent toggle button, top-left of the content area, `HugeiconsIcon` `LayoutAlignRightIcon` per direct request
+- [x] Attachment proxy (`/api/attachments/[cardId]/[attachmentId]`) now falls back to the bare attachment URL if the key/token-appended request fails — researched Trello's actual auth behavior first (confirmed query-param `?key=&token=` is a valid, commonly-used pattern), but some attachment URLs may already be pre-signed (e.g. S3), where appending extra query params would invalidate the signature. The fallback covers both cases without needing to know which kind of URL Trello handed back. **Not yet live-verified** — flag if images/video are still broken after this
+- [ ] Broader mobile responsiveness pass (table/canvas padding, wrapping toolbars, etc.) beyond the sidebar toggle — explicitly deferred, user said "that's it for now"
+
+## Phase 24 — Lorem ipsum expansion shortcut — done
+- [x] `src/lib/lorem.ts` — `generateLorem(n)` (word bank, cycles/repeats past 60, capitalizes + periods), `expandLoremAtCursor(value, cursorPos)` (pure function: matches a `loremN` token immediately before the cursor, returns the replacement + where the cursor should land, or `null` if no match)
+- [x] Trigger: type `lorem22` then press **Space** or **Tab** → expands to 22 words in place, cursor lands right after. Chose word-count over character-count (ambiguous in the request) since it's the standard convention for this shortcut elsewhere and gives more predictable-looking output
+- [x] Wired into both places text gets typed: `MarkdownEditor` (covers canvas text blocks *and* the card detail sheet's description — same shared component) and the block composer's default text-entry textarea (covers creating a brand-new text block from `/` or plain typing)
+
+## What's left (honest current state, 2026-08-09)
 - **Our own table columns** (Phase 16) — biggest remaining item, not started. Add/edit/rename/delete custom columns using the same hidden-metadata-in-`desc` trick as blocks, replacing the abandoned Trello-Custom-Fields approach.
 - **Cover image** (Phase 21) — not started, requested twice now.
 - **Generic File block** (Phase 14) — any file type, not just images.
+- **Broader mobile responsiveness** — sidebar toggle done, rest of the layout (table/canvas padding, toolbar wrapping) not audited yet
 - **Smaller polish**: theme toggle, retry-on-429, public share-link surfacing, deploy prep.
-- **Unverified against the real Trello API** (built from documented behavior, never seen live): the Invite-by-email endpoint (`PUT /1/boards/{id}/members`).
+- **Unverified against the real Trello API** (built from documented behavior, never seen live): the Invite-by-email endpoint (`PUT /1/boards/{id}/members`), and the attachment-proxy fallback above.
 - **Known limitation**: server-side cache is per-process in-memory, won't share across multiple serverless instances if ever deployed somewhere like Vercel with multiple concurrent instances.
