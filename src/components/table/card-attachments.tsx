@@ -1,3 +1,4 @@
+import { isImageAttachment, isVideoAttachment } from "@/lib/trello/media-type";
 import type { TrelloAttachment } from "@/lib/trello/types";
 
 export function CardAttachments({ cardId, attachments }: { cardId: string; attachments: TrelloAttachment[] }) {
@@ -7,11 +8,13 @@ export function CardAttachments({ cardId, attachments }: { cardId: string; attac
     <div className="flex flex-col gap-2">
       {attachments.map((attachment) => {
         const src = `/api/attachments/${cardId}/${attachment.id}`;
-        if (attachment.mimeType?.startsWith("image/")) {
-          // eslint-disable-next-line @next/next/no-img-element
-          return <img key={attachment.id} src={src} alt={attachment.name} className="rounded-md border border-border" />;
+        if (isImageAttachment(attachment.mimeType, attachment.name, attachment.url)) {
+          return (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={attachment.id} src={src} alt={attachment.name} className="rounded-md border border-border" />
+          );
         }
-        if (attachment.mimeType?.startsWith("video/")) {
+        if (isVideoAttachment(attachment.mimeType, attachment.name, attachment.url)) {
           return (
             <video key={attachment.id} src={src} controls className="rounded-md border border-border">
               <track kind="captions" />

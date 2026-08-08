@@ -10,6 +10,7 @@ export interface TrelloBoard {
   name: string;
   url: string;
   closed: boolean;
+  prefs?: { permissionLevel: "private" | "org" | "public" };
 }
 
 export interface TrelloList {

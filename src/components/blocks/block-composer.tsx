@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
-import { BookmarkIcon, File01Icon, Image02Icon, TextIcon } from "@hugeicons/core-free-icons";
+import { BookmarkIcon, File01Icon, Image02Icon, Table01Icon, TextIcon } from "@hugeicons/core-free-icons";
 import type { TrelloCard, TrelloList } from "@/lib/trello/types";
 
-type PendingType = "page" | "bookmark" | "image" | null;
+type PendingType = "page" | "bookmark" | "image" | "table" | null;
 
 interface BlockOption {
-  type: "text" | "page" | "bookmark" | "image";
+  type: "text" | "page" | "bookmark" | "image" | "table";
   label: string;
   icon: IconSvgElement;
 }
@@ -16,6 +16,7 @@ interface BlockOption {
 const OPTIONS: BlockOption[] = [
   { type: "text", label: "Text", icon: TextIcon },
   { type: "page", label: "Page", icon: File01Icon },
+  { type: "table", label: "Table", icon: Table01Icon },
   { type: "bookmark", label: "Bookmark", icon: BookmarkIcon },
   { type: "image", label: "Image", icon: Image02Icon },
 ];
@@ -23,10 +24,11 @@ const OPTIONS: BlockOption[] = [
 interface BlockComposerProps {
   boardId: string;
   listId: string;
+  pages: { id: string; name: string }[];
   onCreated: (card: TrelloCard, list?: TrelloList) => void;
 }
 
-export function BlockComposer({ boardId, listId, onCreated }: BlockComposerProps) {
+export function BlockComposer({ boardId, listId, pages, onCreated }: BlockComposerProps) {
   const [value, setValue] = useState("");
   const [pendingType, setPendingType] = useState<PendingType>(null);
   const [creating, setCreating] = useState(false);
@@ -36,6 +38,11 @@ export function BlockComposer({ boardId, listId, onCreated }: BlockComposerProps
   const query = isSlashCommand ? value.slice(1).toLowerCase() : "";
   const filteredOptions = isSlashCommand ? OPTIONS.filter((o) => o.label.toLowerCase().includes(query)) : [];
   const menuOpen = isSlashCommand && filteredOptions.length > 0;
+
+  const pageSuggestions =
+    pendingType === "bookmark" && value.trim().length > 0
+      ? pages.filter((p) => p.name.toLowerCase().includes(value.toLowerCase()))
+      : [];
 
   useEffect(() => {
     if (pendingType === "image") fileInputRef.current?.click();
@@ -63,6 +70,37 @@ export function BlockComposer({ boardId, listId, onCreated }: BlockComposerProps
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "page", name, boardId }),
+    });
+    setCreating(false);
+    if (!res.ok) return;
+    const { card, list } = await res.json();
+    onCreated(card, list);
+    setValue("");
+    setPendingType(null);
+  }
+
+  async function submitTable(name: string) {
+    if (!name.trim()) return;
+    setCreating(true);
+    const res = await fetch(`/api/lists/${listId}/blocks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "table", name, boardId }),
+    });
+    setCreating(false);
+    if (!res.ok) return;
+    const { card, list } = await res.json();
+    onCreated(card, list);
+    setValue("");
+    setPendingType(null);
+  }
+
+  async function submitInternalPage(page: { id: string; name: string }) {
+    setCreating(true);
+    const res = await fetch(`/api/lists/${listId}/blocks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "page", name: page.name, existingListId: page.id }),
     });
     setCreating(false);
     if (!res.ok) return;
@@ -115,13 +153,25 @@ export function BlockComposer({ boardId, listId, onCreated }: BlockComposerProps
       setValue("");
       return;
     }
+    if (e.key === "Backspace" && pendingType && value === "") {
+      setPendingType(null);
+      return;
+    }
     if (e.key !== "Enter") return;
     e.preventDefault();
     if (pendingType === "page") {
       submitPage(value);
       return;
     }
+    if (pendingType === "table") {
+      submitTable(value);
+      return;
+    }
     if (pendingType === "bookmark") {
+      if (pageSuggestions.length > 0) {
+        submitInternalPage(pageSuggestions[0]);
+        return;
+      }
       submitBookmark(value);
       return;
     }
@@ -135,11 +185,13 @@ export function BlockComposer({ boardId, listId, onCreated }: BlockComposerProps
   const placeholder =
     pendingType === "page"
       ? "Page name…"
-      : pendingType === "bookmark"
-        ? "Paste a link…"
-        : pendingType === "image"
-          ? "Choose an image…"
-          : "Type '/' for commands";
+      : pendingType === "table"
+        ? "Table name…"
+        : pendingType === "bookmark"
+          ? "Paste a link, or search a page…"
+          : pendingType === "image"
+            ? "Choose an image…"
+            : "Type '/' for commands";
 
   return (
     <div className="relative mt-2">
@@ -175,6 +227,23 @@ export function BlockComposer({ boardId, listId, onCreated }: BlockComposerProps
             >
               <HugeiconsIcon icon={option.icon} size={14} className="text-muted-foreground" />
               {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {pageSuggestions.length > 0 && (
+        <div className="absolute top-full left-0 z-10 mt-1 w-64 overflow-hidden rounded-md border border-border bg-popover py-1 shadow-md">
+          <p className="px-3 pt-1 pb-0.5 text-[11px] text-muted-foreground">Link to an existing page</p>
+          {pageSuggestions.map((page) => (
+            <button
+              key={page.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => submitInternalPage(page)}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
+            >
+              <HugeiconsIcon icon={File01Icon} size={14} className="text-muted-foreground" />
+              <span className="truncate">{page.name}</span>
             </button>
           ))}
         </div>

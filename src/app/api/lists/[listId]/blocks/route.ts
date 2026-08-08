@@ -9,17 +9,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ lis
   if (!token) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => null);
-  const type = body?.type === "page" || body?.type === "bookmark" ? body.type : "text";
+  const type =
+    body?.type === "page" || body?.type === "bookmark" || body?.type === "table" ? body.type : "text";
 
   try {
-    if (type === "page") {
+    if (type === "page" || type === "table") {
       const boardId = body?.boardId;
+      const existingListId = typeof body?.existingListId === "string" ? body.existingListId : null;
       const name = typeof body?.name === "string" && body.name.trim().length > 0 ? body.name.trim() : "Untitled";
-      if (typeof boardId !== "string") {
-        return NextResponse.json({ error: "boardId is required for page blocks" }, { status: 400 });
+
+      let list;
+      if (existingListId) {
+        list = { id: existingListId, name };
+      } else {
+        if (typeof boardId !== "string") {
+          return NextResponse.json({ error: "boardId is required for page/table blocks" }, { status: 400 });
+        }
+        list = await createList(boardId, name, token);
       }
-      const list = await createList(boardId, name, token);
-      const desc = serializeBlock("page", list.id, "");
+      const desc = serializeBlock(type, list.id, "");
       const card = await createCard(listId, name, token, desc);
       return NextResponse.json({ card, list });
     }

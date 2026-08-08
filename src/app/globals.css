@@ -131,6 +131,11 @@
   html {
     @apply font-sans;
   }
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) transparent;
@@ -149,4 +154,38 @@
   *::-webkit-scrollbar-thumb:hover {
     background-color: var(--scrollbar-thumb-hover);
   }
+}
+
+.prose-daspace {
+  @apply text-sm leading-6 break-words;
+}
+.prose-daspace :where(h1, h2, h3) {
+  @apply mt-1 mb-1 font-semibold;
+}
+.prose-daspace h1 {
+  @apply text-xl;
+}
+.prose-daspace h2 {
+  @apply text-lg;
+}
+.prose-daspace h3 {
+  @apply text-base;
+}
+.prose-daspace p {
+  @apply mb-1;
+}
+.prose-daspace a {
+  @apply text-primary underline underline-offset-4;
+}
+.prose-daspace ul {
+  @apply list-disc pl-5;
+}
+.prose-daspace ol {
+  @apply list-decimal pl-5;
+}
+.prose-daspace code {
+  @apply rounded bg-muted px-1 py-0.5 text-xs;
+}
+.prose-daspace strong {
+  @apply font-semibold;
 }

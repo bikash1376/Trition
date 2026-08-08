@@ -33,7 +33,7 @@ function MemberHoverCard({ member, className }: { member: TrelloMember; classNam
 }
 
 export function AvatarStack({ members }: { members: TrelloMember[] }) {
-  if (members.length === 0) return <span className="text-xs text-muted-foreground">—</span>;
+  if (members.length === 0) return null;
   return (
     <div className="flex -space-x-1.5">
       {members.map((member) => (

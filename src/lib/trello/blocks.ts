@@ -1,8 +1,9 @@
 export const HOME_LIST_NAME = "DaSpace";
+export const PERSONAL_BOARD_NAME = "DaSpace Personal";
 
-export type BlockType = "text" | "page" | "bookmark" | "image";
+export type BlockType = "text" | "page" | "bookmark" | "image" | "table";
 
-const BLOCK_TYPES: BlockType[] = ["text", "page", "bookmark", "image"];
+const BLOCK_TYPES: BlockType[] = ["text", "page", "bookmark", "image", "table"];
 
 export interface ParsedBlock {
   type: BlockType;
@@ -23,4 +24,12 @@ export function parseBlock(desc: string): ParsedBlock {
 export function serializeBlock(type: BlockType, ref: string | null, content: string) {
   const marker = ref ? `<!-- daspace:block=${type};ref=${ref} -->` : `<!-- daspace:block=${type} -->`;
   return content ? `${marker}\n${content}` : marker;
+}
+
+export function isBlockCard(desc: string) {
+  return MARKER_RE.test(desc);
+}
+
+export function isCanvasList(cardDescs: string[]) {
+  return cardDescs.length === 0 || cardDescs.every(isBlockCard);
 }

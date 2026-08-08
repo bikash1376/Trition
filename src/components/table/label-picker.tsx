@@ -30,11 +30,11 @@ export function LabelPicker({ cardId, selected, options, onChange, children }: L
     <Popover>
       <PopoverTrigger
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        className="contents text-left"
+        className="block w-full cursor-pointer text-left"
       >
         {children}
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-1" onClick={(e) => e.stopPropagation()}>
+      <PopoverContent align="start" className="w-56 p-1" onClick={(e) => e.stopPropagation()}>
         {namedOptions.length === 0 && (
           <p className="px-2 py-1.5 text-xs text-muted-foreground">No named labels on this board.</p>
         )}

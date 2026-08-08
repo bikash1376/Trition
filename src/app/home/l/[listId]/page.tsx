@@ -15,31 +15,30 @@ import { WorkspaceSidebar } from "@/components/shell/workspace-sidebar";
 import { CardTable } from "@/components/table/card-table";
 import { BlockCanvas } from "@/components/blocks/block-canvas";
 
-export default async function ListPage({
-  params,
-}: {
-  params: Promise<{ boardId: string; listId: string }>;
-}) {
-  const { boardId, listId } = await params;
+export default async function HomeListPage({ params }: { params: Promise<{ listId: string }> }) {
+  const { listId } = await params;
   const token = await requireToken();
 
-  const [me, allBoards, lists, cards] = await withAuthGuard(
-    Promise.all([getMe(token), getMyBoards(token), getBoardLists(boardId, token), getListCards(listId, token)]),
-  );
+  const [me, allBoards] = await withAuthGuard(Promise.all([getMe(token), getMyBoards(token)]));
   const boards = allBoards.filter((b) => b.name !== PERSONAL_BOARD_NAME);
+  const personalBoard = allBoards.find((b) => b.name === PERSONAL_BOARD_NAME);
+  if (!personalBoard) redirect("/home");
+
+  const [lists, cards] = await withAuthGuard(
+    Promise.all([getBoardLists(personalBoard.id, token), getListCards(listId, token)]),
+  );
 
   const activeList = lists.find((list) => list.id === listId);
-  if (!activeList || activeList.name === HOME_LIST_NAME) redirect(`/b/${boardId}`);
+  if (!activeList || activeList.name === HOME_LIST_NAME) redirect("/home");
 
   const pages = lists.filter((list) => list.name !== HOME_LIST_NAME);
   const sidebar = (
     <WorkspaceSidebar
       me={me}
       boards={boards}
-      homeActive={false}
-      activeBoardId={boardId}
-      pageHrefBase={`/b/${boardId}`}
-      pagesBoardId={boardId}
+      homeActive
+      pageHrefBase="/home"
+      pagesBoardId={personalBoard.id}
       lists={pages}
       activeListId={listId}
     />
@@ -50,9 +49,9 @@ export default async function ListPage({
     return (
       <AppShell sidebar={sidebar}>
         <BlockCanvas
-          boardId={boardId}
+          boardId={personalBoard.id}
           listId={listId}
-          pageHrefBase={`/b/${boardId}`}
+          pageHrefBase="/home"
           pageTitle={activeList.name}
           cards={cards}
           pageNames={pageNames}
@@ -64,7 +63,7 @@ export default async function ListPage({
   }
 
   const [members, labels] = await withAuthGuard(
-    Promise.all([getBoardMembers(boardId, token), getBoardLabels(boardId, token)]),
+    Promise.all([getBoardMembers(personalBoard.id, token), getBoardLabels(personalBoard.id, token)]),
   );
   const creators = await withAuthGuard(Promise.all(cards.map((card) => getCardCreator(card.id, token))));
   const rows = cards.map((card, i) => ({ card, creator: creators[i] }));

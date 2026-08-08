@@ -11,30 +11,47 @@ import { Separator } from "@/components/ui/separator";
 import { MemberAvatar } from "@/components/table/avatar-stack";
 import { CardAttachments } from "@/components/table/card-attachments";
 import { LabelPicker } from "@/components/table/label-picker";
+import { MemberPicker } from "@/components/table/member-picker";
+import { StatusPills } from "@/components/table/status-pills";
+import { MarkdownEditor } from "@/components/markdown-editor";
 import { readLocalCache, writeLocalCache } from "@/lib/local-cache";
+import { useDebouncedCallback } from "@/lib/use-debounced-callback";
 import type { TrelloAttachment, TrelloCard, TrelloCommentAction, TrelloLabel, TrelloMember } from "@/lib/trello/types";
 
 const BOARD_LABELS_TTL = 10 * 60_000;
+const SAVE_DEBOUNCE_MS = 10_000;
 
 interface CardDetail {
   card: TrelloCard;
   members: TrelloMember[];
   creator: TrelloMember | null;
+  lastEditor: TrelloMember | null;
   comments: TrelloCommentAction[];
   attachments: TrelloAttachment[];
 }
 
 interface CardDetailSheetProps {
   cardId: string | null;
+  boardMembers: TrelloMember[];
   onOpenChange: (open: boolean) => void;
   onRenamed: (cardId: string, name: string) => void;
   onArchived: (cardId: string) => void;
+  onMembersChanged: (cardId: string, members: TrelloMember[]) => void;
 }
 
-export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }: CardDetailSheetProps) {
+export function CardDetailSheet({
+  cardId,
+  boardMembers,
+  onOpenChange,
+  onRenamed,
+  onArchived,
+  onMembersChanged,
+}: CardDetailSheetProps) {
   const [detail, setDetail] = useState<CardDetail | null>(null);
   const [boardLabels, setBoardLabels] = useState<TrelloLabel[]>([]);
   const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [descStatus, setDescStatus] = useState<"idle" | "pending" | "saved">("idle");
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
 
@@ -49,6 +66,8 @@ export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }:
         if (cancelled) return;
         setDetail(data);
         setName(data.card.name);
+        setDesc(data.card.desc);
+        setDescStatus("idle");
 
         const cacheKey = `daspace:board-labels:${data.card.idBoard}`;
         const fromCache = readLocalCache<TrelloLabel[]>(cacheKey);
@@ -82,6 +101,23 @@ export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }:
     });
     onRenamed(cardId, trimmed);
     setDetail({ ...detail, card: { ...detail.card, name: trimmed } });
+  }
+
+  const [debouncedSaveDesc] = useDebouncedCallback(async (id: string, value: string) => {
+    setDescStatus("pending");
+    await fetch(`/api/cards/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ desc: value }),
+    });
+    setDescStatus("saved");
+  }, SAVE_DEBOUNCE_MS);
+
+  function handleDescChange(value: string) {
+    setDesc(value);
+    if (!cardId) return;
+    setDescStatus("pending");
+    debouncedSaveDesc(cardId, value);
   }
 
   async function submitComment() {
@@ -124,12 +160,15 @@ export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }:
             <div className="flex flex-col gap-3 px-4 pb-4 text-sm">
               <div className="grid grid-cols-[100px_1fr] items-center gap-y-2">
                 <span className="text-muted-foreground">Members</span>
-                <div className="flex -space-x-1.5">
-                  {detail.members.length === 0 && <span className="text-muted-foreground">Empty</span>}
-                  {detail.members.map((m) => (
-                    <MemberAvatar key={m.id} member={m} className="h-6 w-6 border-2 border-background" />
-                  ))}
-                </div>
+                <MemberPicker
+                  cardId={detail.card.id}
+                  selected={detail.members}
+                  options={boardMembers}
+                  onChange={(next) => {
+                    setDetail({ ...detail, members: next });
+                    onMembersChanged(detail.card.id, next);
+                  }}
+                />
 
                 <span className="text-muted-foreground">Created By</span>
                 <div className="flex items-center gap-2">
@@ -137,6 +176,18 @@ export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }:
                     <>
                       <MemberAvatar member={detail.creator} className="h-5 w-5" />
                       <span>{detail.creator.fullName}</span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">Unknown</span>
+                  )}
+                </div>
+
+                <span className="text-muted-foreground">Last Edited By</span>
+                <div className="flex items-center gap-2">
+                  {detail.lastEditor ? (
+                    <>
+                      <MemberAvatar member={detail.lastEditor} className="h-5 w-5" />
+                      <span>{detail.lastEditor.fullName}</span>
                     </>
                   ) : (
                     <span className="text-muted-foreground">Unknown</span>
@@ -151,23 +202,22 @@ export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }:
                   onChange={(next) => setDetail({ ...detail, card: { ...detail.card, labels: next } })}
                 >
                   <div className="flex min-h-5 flex-wrap gap-1">
-                    {detail.card.labels.length === 0 && <span className="text-muted-foreground">Empty</span>}
-                    {detail.card.labels.map((label) => (
-                      <span
-                        key={label.id}
-                        className="rounded px-2 py-0.5 text-xs font-medium text-white"
-                        style={{ backgroundColor: label.color ?? "#8c9bab" }}
-                      >
-                        {label.name || label.color}
-                      </span>
-                    ))}
+                    <StatusPills labels={detail.card.labels} />
                   </div>
                 </LabelPicker>
               </div>
 
-              {detail.card.desc && (
-                <p className="whitespace-pre-wrap text-muted-foreground">{detail.card.desc}</p>
-              )}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Description</p>
+                  {descStatus !== "idle" && (
+                    <span className="text-xs text-muted-foreground">
+                      {descStatus === "pending" ? "Saving…" : "Saved"}
+                    </span>
+                  )}
+                </div>
+                <MarkdownEditor value={desc} onChange={handleDescChange} placeholder="Add a description…" />
+              </div>
 
               <CardAttachments cardId={detail.card.id} attachments={detail.attachments} />
 

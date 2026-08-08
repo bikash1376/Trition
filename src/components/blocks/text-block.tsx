@@ -1,40 +1,33 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { MarkdownEditor } from "@/components/markdown-editor";
+import { useDebouncedCallback } from "@/lib/use-debounced-callback";
+
+const SAVE_DEBOUNCE_MS = 10_000;
 
 export function TextBlock({ cardId, initialContent }: { cardId: string; initialContent: string }) {
   const [value, setValue] = useState(initialContent);
-  const ref = useRef<HTMLTextAreaElement>(null);
 
-  function resize(el: HTMLTextAreaElement) {
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  }
-
-  async function save() {
-    if (value === initialContent) return;
+  async function save(content: string) {
     await fetch(`/api/blocks/${cardId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: value }),
+      body: JSON.stringify({ content }),
     });
   }
 
+  const [debouncedSave, flushSave] = useDebouncedCallback(save, SAVE_DEBOUNCE_MS);
+
   return (
-    <textarea
-      ref={(el) => {
-        ref.current = el;
-        if (el) resize(el);
-      }}
+    <MarkdownEditor
       value={value}
-      onChange={(e) => {
-        setValue(e.target.value);
-        resize(e.target);
+      onChange={(next) => {
+        setValue(next);
+        debouncedSave(next);
       }}
-      onBlur={save}
-      rows={1}
+      onBlur={() => flushSave(value)}
       placeholder="Empty text block"
-      className="resize-none overflow-hidden border-none bg-transparent py-1 text-sm leading-6 outline-none placeholder:text-muted-foreground"
     />
   );
 }
