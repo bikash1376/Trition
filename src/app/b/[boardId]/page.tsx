@@ -1,10 +1,11 @@
-import { redirect } from "next/navigation";
-import { getBoardLists, getMe, getMyBoards } from "@/lib/trello/client";
+import { getBoardLists, getListCards, getMe, getMyBoards, createList } from "@/lib/trello/client";
 import { requireToken, withAuthGuard } from "@/lib/trello/guard";
+import { HOME_LIST_NAME } from "@/lib/trello/blocks";
 import { AppShell } from "@/components/shell/app-shell";
 import { WorkspaceSidebar } from "@/components/shell/workspace-sidebar";
+import { BlockCanvas } from "@/components/blocks/block-canvas";
 
-export default async function BoardPage({ params }: { params: Promise<{ boardId: string }> }) {
+export default async function BoardHomePage({ params }: { params: Promise<{ boardId: string }> }) {
   const { boardId } = await params;
   const token = await requireToken();
 
@@ -12,16 +13,24 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
     Promise.all([getMe(token), getMyBoards(token), getBoardLists(boardId, token)]),
   );
 
-  if (lists.length > 0) redirect(`/b/${boardId}/l/${lists[0].id}`);
+  const homeList = lists.find((l) => l.name === HOME_LIST_NAME) ?? (await withAuthGuard(createList(boardId, HOME_LIST_NAME, token)));
+  const pages = lists.filter((l) => l.id !== homeList.id);
+  const board = boards.find((b) => b.id === boardId);
+
+  const cards = await withAuthGuard(getListCards(homeList.id, token));
+  const pageNames = Object.fromEntries(pages.map((l) => [l.id, l.name]));
 
   return (
-    <AppShell sidebar={<WorkspaceSidebar me={me} boards={boards} activeBoardId={boardId} lists={lists} />}>
-      <div className="flex h-full items-center justify-center px-6">
-        <div className="max-w-sm space-y-2 text-center">
-          <h1 className="text-lg font-semibold">No pages on this board yet</h1>
-          <p className="text-sm text-muted-foreground">Add a list in Trello to see it here as a page.</p>
-        </div>
-      </div>
+    <AppShell
+      sidebar={<WorkspaceSidebar me={me} boards={boards} activeBoardId={boardId} lists={pages} isHome />}
+    >
+      <BlockCanvas
+        boardId={boardId}
+        listId={homeList.id}
+        pageTitle={board?.name ?? "Workspace"}
+        cards={cards}
+        pageNames={pageNames}
+      />
     </AppShell>
   );
 }

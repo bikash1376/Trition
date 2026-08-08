@@ -2,20 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Delete02Icon, SentIcon } from "@hugeicons/core-free-icons";
+import { SentIcon } from "@hugeicons/core-free-icons";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { MemberAvatar } from "@/components/table/avatar-stack";
-import type { TrelloCard, TrelloCommentAction, TrelloMember } from "@/lib/trello/types";
+import { CardAttachments } from "@/components/table/card-attachments";
+import { LabelPicker } from "@/components/table/label-picker";
+import { readLocalCache, writeLocalCache } from "@/lib/local-cache";
+import type { TrelloAttachment, TrelloCard, TrelloCommentAction, TrelloLabel, TrelloMember } from "@/lib/trello/types";
+
+const BOARD_LABELS_TTL = 10 * 60_000;
 
 interface CardDetail {
   card: TrelloCard;
   members: TrelloMember[];
   creator: TrelloMember | null;
   comments: TrelloCommentAction[];
+  attachments: TrelloAttachment[];
 }
 
 interface CardDetailSheetProps {
@@ -27,6 +33,7 @@ interface CardDetailSheetProps {
 
 export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }: CardDetailSheetProps) {
   const [detail, setDetail] = useState<CardDetail | null>(null);
+  const [boardLabels, setBoardLabels] = useState<TrelloLabel[]>([]);
   const [name, setName] = useState("");
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
@@ -35,13 +42,25 @@ export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }:
     if (!cardId) return;
 
     let cancelled = false;
+
     fetch(`/api/cards/${cardId}`)
       .then((res) => res.json())
-      .then((data: CardDetail) => {
-        if (!cancelled) {
-          setDetail(data);
-          setName(data.card.name);
+      .then(async (data: CardDetail) => {
+        if (cancelled) return;
+        setDetail(data);
+        setName(data.card.name);
+
+        const cacheKey = `daspace:board-labels:${data.card.idBoard}`;
+        const fromCache = readLocalCache<TrelloLabel[]>(cacheKey);
+        if (fromCache) {
+          setBoardLabels(fromCache);
+          return;
         }
+        const res = await fetch(`/api/boards/${data.card.idBoard}/labels`);
+        if (!res.ok || cancelled) return;
+        const { labels } = await res.json();
+        setBoardLabels(labels);
+        writeLocalCache(cacheKey, labels, BOARD_LABELS_TTL);
       });
 
     return () => {
@@ -98,7 +117,7 @@ export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }:
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onBlur={saveName}
-                className="border-none px-0 text-xl font-semibold shadow-none focus-visible:ring-0"
+                className="h-auto border-none px-0 py-1 text-xl leading-normal font-semibold shadow-none focus-visible:ring-0"
               />
             </SheetHeader>
 
@@ -124,27 +143,33 @@ export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }:
                   )}
                 </div>
 
-                {detail.card.labels.length > 0 && (
-                  <>
-                    <span className="text-muted-foreground">Status</span>
-                    <div className="flex flex-wrap gap-1">
-                      {detail.card.labels.map((label) => (
-                        <span
-                          key={label.id}
-                          className="rounded px-2 py-0.5 text-xs font-medium text-white"
-                          style={{ backgroundColor: label.color ?? "#8c9bab" }}
-                        >
-                          {label.name || label.color}
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                )}
+                <span className="text-muted-foreground">Status</span>
+                <LabelPicker
+                  cardId={detail.card.id}
+                  selected={detail.card.labels}
+                  options={boardLabels}
+                  onChange={(next) => setDetail({ ...detail, card: { ...detail.card, labels: next } })}
+                >
+                  <div className="flex min-h-5 flex-wrap gap-1">
+                    {detail.card.labels.length === 0 && <span className="text-muted-foreground">Empty</span>}
+                    {detail.card.labels.map((label) => (
+                      <span
+                        key={label.id}
+                        className="rounded px-2 py-0.5 text-xs font-medium text-white"
+                        style={{ backgroundColor: label.color ?? "#8c9bab" }}
+                      >
+                        {label.name || label.color}
+                      </span>
+                    ))}
+                  </div>
+                </LabelPicker>
               </div>
 
               {detail.card.desc && (
                 <p className="whitespace-pre-wrap text-muted-foreground">{detail.card.desc}</p>
               )}
+
+              <CardAttachments cardId={detail.card.id} attachments={detail.attachments} />
 
               <Separator />
 
@@ -183,10 +208,13 @@ export function CardDetailSheet({ cardId, onOpenChange, onRenamed, onArchived }:
 
               <Separator />
 
-              <Button variant="outline" size="sm" className="gap-2 self-start text-destructive" onClick={archive}>
-                <HugeiconsIcon icon={Delete02Icon} size={16} />
+              <button
+                type="button"
+                onClick={archive}
+                className="self-start text-sm text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
+              >
                 Archive card
-              </Button>
+              </button>
             </div>
           </>
         ) : (

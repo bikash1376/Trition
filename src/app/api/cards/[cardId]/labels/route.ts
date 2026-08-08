@@ -1,0 +1,26 @@
+import { NextResponse } from "next/server";
+import { getTrelloToken } from "@/lib/trello/session";
+import { addCardLabel, removeCardLabel, TrelloApiError } from "@/lib/trello/client";
+
+export async function POST(request: Request, { params }: { params: Promise<{ cardId: string }> }) {
+  const { cardId } = await params;
+  const token = await getTrelloToken();
+  if (!token) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const body = await request.json().catch(() => null);
+  if (typeof body?.labelId !== "string") {
+    return NextResponse.json({ error: "labelId is required" }, { status: 400 });
+  }
+
+  try {
+    if (body.add) {
+      await addCardLabel(cardId, body.labelId, token);
+    } else {
+      await removeCardLabel(cardId, body.labelId, token);
+    }
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    if (err instanceof TrelloApiError) return NextResponse.json({ error: err.message }, { status: err.status });
+    throw err;
+  }
+}

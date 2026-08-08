@@ -1,5 +1,9 @@
 import { trelloApiKey } from "./env";
-import type { TrelloBoard, TrelloCard, TrelloCommentAction, TrelloList, TrelloMember } from "./types";
+import { cached } from "./cache";
+import type { TrelloAttachment, TrelloBoard, TrelloCard, TrelloCommentAction, TrelloLabel, TrelloList, TrelloMember } from "./types";
+
+const TTL = 60_000;
+const LONG_TTL = 60 * 60_000;
 
 const BASE_URL = "https://api.trello.com/1";
 
@@ -31,16 +35,20 @@ async function trelloFetch<T>(
 }
 
 export function getMe(token: string) {
-  return trelloFetch<TrelloMember>("/members/me", token, {
-    fields: "fullName,username,avatarUrl",
-  });
+  return cached(`me:${token}`, TTL, () =>
+    trelloFetch<TrelloMember>("/members/me", token, {
+      fields: "fullName,username,avatarUrl",
+    }),
+  );
 }
 
 export function getMyBoards(token: string) {
-  return trelloFetch<TrelloBoard[]>("/members/me/boards", token, {
-    fields: "name,url,closed",
-    filter: "open",
-  });
+  return cached(`my-boards:${token}`, TTL, () =>
+    trelloFetch<TrelloBoard[]>("/members/me/boards", token, {
+      fields: "name,url,closed",
+      filter: "open",
+    }),
+  );
 }
 
 export function getBoard(boardId: string, token: string) {
@@ -57,20 +65,26 @@ export function getBoardLists(boardId: string, token: string) {
 }
 
 export function getBoardMembers(boardId: string, token: string) {
-  return trelloFetch<TrelloMember[]>(`/boards/${boardId}/members`, token, {
-    fields: "fullName,username,avatarUrl",
-  });
+  return cached(`board-members:${boardId}:${token}`, TTL, () =>
+    trelloFetch<TrelloMember[]>(`/boards/${boardId}/members`, token, {
+      fields: "fullName,username,avatarUrl",
+    }),
+  );
+}
+
+export function createList(boardId: string, name: string, token: string) {
+  return trelloFetch<TrelloList>("/lists", token, { name, idBoard: boardId }, "POST");
 }
 
 export function getListCards(listId: string, token: string) {
   return trelloFetch<TrelloCard[]>(`/lists/${listId}/cards`, token, {
-    fields: "name,desc,idList,idMembers,labels,due,closed,shortUrl",
+    fields: "name,desc,idList,idBoard,idMembers,labels,due,closed,shortUrl",
   });
 }
 
 export function getCard(cardId: string, token: string) {
   return trelloFetch<TrelloCard>(`/cards/${cardId}`, token, {
-    fields: "name,desc,idList,idMembers,labels,due,closed,shortUrl",
+    fields: "name,desc,idList,idBoard,idMembers,labels,due,closed,shortUrl",
   });
 }
 
@@ -78,6 +92,45 @@ export function getCardMembers(cardId: string, token: string) {
   return trelloFetch<TrelloMember[]>(`/cards/${cardId}/members`, token, {
     fields: "fullName,username,avatarUrl",
   });
+}
+
+export function getCardAttachments(cardId: string, token: string) {
+  return trelloFetch<TrelloAttachment[]>(`/cards/${cardId}/attachments`, token, {
+    fields: "name,url,mimeType,bytes",
+  });
+}
+
+export async function uploadCardAttachment(cardId: string, file: File, token: string) {
+  const url = new URL(`${BASE_URL}/cards/${cardId}/attachments`);
+  url.searchParams.set("key", trelloApiKey());
+  url.searchParams.set("token", token);
+
+  const form = new FormData();
+  form.append("file", file, file.name);
+
+  const res = await fetch(url.toString(), { method: "POST", body: form });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new TrelloApiError(res.status, text || res.statusText);
+  }
+  return res.json() as Promise<TrelloAttachment>;
+}
+
+export function getBoardLabels(boardId: string, token: string) {
+  return cached(`board-labels:${boardId}:${token}`, TTL, () =>
+    trelloFetch<TrelloLabel[]>(`/boards/${boardId}/labels`, token, {
+      fields: "name,color",
+      limit: "1000",
+    }),
+  );
+}
+
+export function addCardLabel(cardId: string, labelId: string, token: string) {
+  return trelloFetch<TrelloLabel[]>(`/cards/${cardId}/idLabels`, token, { value: labelId }, "POST");
+}
+
+export function removeCardLabel(cardId: string, labelId: string, token: string) {
+  return trelloFetch<{ _value: null }>(`/cards/${cardId}/idLabels/${labelId}`, token, {}, "DELETE");
 }
 
 export function getCardComments(cardId: string, token: string) {
@@ -103,21 +156,29 @@ interface CreatorAction {
   memberCreator: TrelloMember;
 }
 
-export async function getCardCreator(cardId: string, token: string): Promise<TrelloMember | null> {
-  const actions = await trelloFetch<CreatorAction[]>(`/cards/${cardId}/actions`, token, {
-    filter: "createCard,copyCard",
-    limit: "1",
-    memberCreator_fields: "fullName,username,avatarUrl",
+export function getCardCreator(cardId: string, token: string): Promise<TrelloMember | null> {
+  return cached(`card-creator:${cardId}`, LONG_TTL, async () => {
+    const actions = await trelloFetch<CreatorAction[]>(`/cards/${cardId}/actions`, token, {
+      filter: "createCard,copyCard",
+      limit: "1",
+      memberCreator_fields: "fullName,username,avatarUrl",
+    });
+    return actions[0]?.memberCreator ?? null;
   });
-  return actions[0]?.memberCreator ?? null;
 }
 
 export function updateCardName(cardId: string, name: string, token: string) {
   return trelloFetch<TrelloCard>(`/cards/${cardId}`, token, { name }, "PUT");
 }
 
-export function createCard(listId: string, name: string, token: string) {
-  return trelloFetch<TrelloCard>("/cards", token, { idList: listId, name }, "POST");
+export function updateCardDesc(cardId: string, desc: string, token: string) {
+  return trelloFetch<TrelloCard>(`/cards/${cardId}`, token, { desc }, "PUT");
+}
+
+export function createCard(listId: string, name: string, token: string, desc?: string) {
+  const params: Record<string, string> = { idList: listId, name };
+  if (desc) params.desc = desc;
+  return trelloFetch<TrelloCard>("/cards", token, params, "POST");
 }
 
 export function archiveCard(cardId: string, token: string) {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Building03Icon, File01Icon, Logout03Icon } from "@hugeicons/core-free-icons";
+import { Building03Icon, File01Icon, Home01Icon, Logout03Icon } from "@hugeicons/core-free-icons";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,10 @@ interface WorkspaceSidebarProps {
   activeBoardId: string;
   lists: TrelloList[];
   activeListId?: string;
+  isHome?: boolean;
 }
 
-export function WorkspaceSidebar({ me, boards, activeBoardId, lists, activeListId }: WorkspaceSidebarProps) {
+export function WorkspaceSidebar({ me, boards, activeBoardId, lists, activeListId, isHome }: WorkspaceSidebarProps) {
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-2 px-3 py-3">
@@ -46,6 +47,20 @@ export function WorkspaceSidebar({ me, boards, activeBoardId, lists, activeListI
               </Link>
             ))}
           </nav>
+        </div>
+
+        <Separator className="bg-sidebar-border" />
+
+        <div className="px-2 py-2">
+          <Link
+            href={`/b/${activeBoardId}`}
+            className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+              isHome ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/60"
+            }`}
+          >
+            <HugeiconsIcon icon={Home01Icon} size={16} className="shrink-0" />
+            Home
+          </Link>
         </div>
 
         <Separator className="bg-sidebar-border" />

@@ -3,6 +3,7 @@ import { getTrelloToken } from "@/lib/trello/session";
 import {
   archiveCard,
   getCard,
+  getCardAttachments,
   getCardComments,
   getCardCreator,
   getCardMembers,
@@ -16,13 +17,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ car
   if (!token) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   try {
-    const [card, members, creator, comments] = await Promise.all([
-      getCard(cardId, token),
+    const card = await getCard(cardId, token);
+    const [members, creator, comments, attachments] = await Promise.all([
       getCardMembers(cardId, token),
       getCardCreator(cardId, token),
       getCardComments(cardId, token),
+      getCardAttachments(cardId, token),
     ]);
-    return NextResponse.json({ card, members, creator, comments });
+    return NextResponse.json({ card, members, creator, comments, attachments });
   } catch (err) {
     if (err instanceof TrelloApiError) return NextResponse.json({ error: err.message }, { status: err.status });
     throw err;
