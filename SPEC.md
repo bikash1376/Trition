@@ -94,8 +94,20 @@ Same as before, now framed as one specific block type rather than the only page 
 ## 11. Tech stack
 
 - **Next.js** (App Router), **shadcn/ui**, **Tailwind v4**, **Geist** font (Google Fonts).
+- **Icons:** Hugeicons (`@hugeicons/react` + free `@hugeicons/core-free-icons`), not lucide-react, for anything we render ourselves. Some shadcn primitives ship with a lucide icon baked into the generated component (e.g. `sheet.tsx`'s close button) — swap those to Hugeicons whenever touched.
 - **Theme:** Notion-style — dark default (`#191919`-ish bg, off-white text, hairline borders, minimal shadow), light mode toggle mirroring Notion's off-white.
 - No app database — a thin Next.js API layer only proxies/holds the Trello token server-side.
+
+### Routing (as implemented)
+
+Until the block-based page canvas (§6/§7) exists, each page is its own route rather than a client-side view switch:
+
+- `/` — resolves the signed-in user's boards and redirects to the first one; shows an empty state if the account has no boards.
+- `/b/[boardId]` — resolves that board's lists and redirects to the first one; shows an empty state if the board has no lists.
+- `/b/[boardId]/l/[listId]` — the actual page: sidebar (boards + lists) plus the active list's cards rendered as a table.
+- `/api/cards/[cardId]` (GET/PATCH/DELETE), `/api/cards/[cardId]/comments` (POST), `/api/lists/[listId]/cards` (POST) — JSON endpoints the client-side table/detail-sheet call directly, so the Trello key/token never reach the browser.
+
+This routing shape is intentionally simple (one table per list) and will need rethinking once §6's block canvas replaces "list = table" with "list = arbitrary block sequence."
 
 ## 12. Non-goals for v1
 

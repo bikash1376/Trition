@@ -1,6 +1,11 @@
+import { redirect } from "next/navigation";
 import { DaSpaceMark, GoogleMark, TrelloMark } from "@/components/icons";
+import { getTrelloToken } from "@/lib/trello/session";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const token = await getTrelloToken();
+  if (token) redirect("/");
+
   return (
     <div className="flex min-h-screen flex-1 items-center justify-center px-4 py-16">
       <div className="flex w-full max-w-sm flex-col items-center gap-6 text-center">
