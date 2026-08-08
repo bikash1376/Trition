@@ -2,7 +2,7 @@
 
 Tracks current build phase. Update this file whenever a phase starts/finishes — don't let it go stale.
 
-**Current phase: massive feature session — Home/Workspace sidebar restructure (backed by a real private Trello board), 5 block types (Text/Page/Table/Bookmark/Image), full table (sort/filter/inline editing), Markdown-based rich text, debounced writes + caching, workspace creation/invite UI, loading skeletons + nav spinners. `eslint` is clean; `next build`'s typecheck is currently unverifiable here because a concurrently-running `next dev` process corrupts `.next/dev/types` mid-write (not a code issue — see note below). Remaining: file/embed block, custom properties, deploy.**
+**Current phase: paused here at the user's request (stop point for a git commit). Session covered: Home/Workspace sidebar restructure + persistence-bug fix, 5 block types (Text/Page/Table/Bookmark/Image) now all editable/deletable via hover actions, full table (sort/filter/inline editing, single-select Status), Markdown rich text, debounced+optimistic writes, workspace creation/invite/settings UI, label management, loading skeletons + nav spinners. `eslint` is clean throughout; `next build`'s typecheck is unverifiable here while a concurrent `next dev` process is running (corrupts `.next/dev/types` mid-write — not a code issue, see note below). See "What's left" at the bottom for the honest remaining list.**
 
 **Build-verification note:** `next build`'s TypeScript pass reads `.next/dev/types/*`, which a live `next dev` process rewrites continuously. Running both at once corrupts those generated files (syntax errors in `routes.d.ts`/`validator.ts` that don't correspond to any source change). `eslint .` is unaffected and has been clean through this whole session. To get a real `next build` check, stop any running `next dev` first.
 
@@ -52,6 +52,9 @@ Tracks current build phase. Update this file whenever a phase starts/finishes �
 - [x] "+ New page" button in the sidebar's Pages section header (previously only reachable via `/page` inside a canvas)
 - [x] "Invite" people to a workspace — button on the workspace-home canvas header, dialog collects an email, `PUT /1/boards/{id}/members` with `email`+`type=normal` (Trello's documented invite-by-email pattern — **not live-tested against the real API in this environment**, flag if it doesn't behave as expected)
 - [x] Selecting **Bookmark** from `/` now also searches existing pages as you type (reusing the already-fetched page list) — picking one creates a client-routed internal page-link block instead of an external bookmark, so it never does a full reload
+
+## Bugs & UX issues reported (round 5) — all fixed
+- [x] **Optimistic UI everywhere a mutation doesn't need fresh Trello data to proceed** (navigation that needs a real id/route stays request-first, per explicit scoping): table add-card (temp row appended instantly, input never disabled, reconciled with the real card on response, rolled back on failure), table delete-card (already was optimistic), sheet title rename, sheet archive (closes/removes immediately), sheet comment submit (temp comment shown immediately using the logged-in user, reconciled on response), block composer text blocks (temp block appended instantly using the same block-marker serialization so it renders correctly right away, reconciled/rolled back on response) — composer input is never disabled while a request is in flight (previously blocked ALL typing during any create). Page/Table/Bookmark/Image block creation still wait for the real response before appearing, since they need a real list/attachment id to render anything meaningful — but they no longer block the composer input itself.
 
 ## Home/Workspace restructure (Phase 6.5) — done
 - [x] Sidebar order: **Home** (top, always visible) → **Workspaces** (below)
@@ -116,7 +119,7 @@ Trello's real limit: **100 requests / 10s per token** (~10/s sustained).
 - [x] Editable page title
 - [x] Row click → detail sheet (bare-link cards excepted)
 - [x] Embeddable compact mode (`compact` prop) for the Table block type
-- [ ] "+ Add a property" (Custom Fields: Text/Number/Date/Checkbox/Select) — not built
+- [ ] "+ Add a property" (Custom Fields) — see Phase 13 below, doing now
 
 ## Phase 8 — Card detail panel
 - [x] Editable title, description (Markdown, debounced), Status, Members
@@ -124,28 +127,105 @@ Trello's real limit: **100 requests / 10s per token** (~10/s sustained).
 - [x] Attachments (images/video inline, others as download links)
 - [x] Comments feed
 - [x] Archive action
-- [ ] "+ Add a property" — depends on Phase 7's custom-fields work
+- [ ] "+ Add a property" — see Phase 13 below, doing now
 
 ## Phase 9 — Other block types
 - [x] Bookmark — external link preview card, or internal page search-and-link
 - [x] Image — real file upload to a Trello attachment, proxied render
 - [x] Table — embedded compact live table, fetched client-side via `/api/lists/[listId]/table-data`
 - [x] Text, Page — Phase 6
-- [ ] Generic file/embed block (Google-Docs-style link preview with richer metadata than Bookmark) — not started
+- [ ] Generic File block — see Phase 14 below, doing now
 
 ## Phase 10 — Workspace promotion & sharing
 - [x] Create workspace with Private/Public visibility (`CreateWorkspaceButton`)
 - [x] Invite people by email (`InviteButton`) — not live-verified against real Trello API
 - [ ] "Turn a nested page into its own workspace" (the original SPEC §9 promotion flow, moving a List to a new Board) — not built; superseded in practice by the Home/Workspace model, but the literal promote-flow still doesn't exist
-- [ ] Public share link surfacing (board is public, but no UI shows/copies the shareable URL)
+- [ ] Public share link surfacing (board is public, but no UI shows/copies the shareable URL) — doing now, Phase 14
 
 ## Phase 11 — Polish
-- [ ] Theme toggle (dark is default and only mode wired up — light tokens exist, no UI switch)
+- [ ] Theme toggle — doing now, Phase 14
 - [x] Custom thin scrollbar, theme-matched, global
 - [x] Loading states — route-level `loading.tsx` Skeleton shells for all four page routes, plus per-nav-item spinners via `useLinkStatus`
-- [x] Rate-limit mitigation — two-layer caching (see above); still no explicit retry-on-429 handling if a burst does exceed the limit
+- [x] Rate-limit mitigation — two-layer caching (see above)
+- [ ] Retry-on-429 handling — doing now, Phase 14
 
 ## Phase 12 — Deploy
 - [ ] Pick hosting (Vercel likely) — resolve the in-memory cache limitation first (see rate-limit section)
 - [ ] Env vars for Trello API key in production
 - [ ] Production OAuth return URL configured
+- [ ] See Phase 15 below for deploy-prep work being done now
+
+## Phase 13 — Custom properties: ABANDONED, replaced by Phase 16
+Trello's Custom Fields Power-Up **cannot be enabled through the API** (confirmed via Atlassian's official docs) — manual per-board web UI action required, which broke the "everything auto-provisions like lists/boards" pattern used everywhere else. **User decision: drop the Trello-native approach entirely** and build our own column system instead (Phase 16), reusing the same hidden-metadata-in-`desc` technique already proven for blocks. The dormant Trello-Custom-Fields plumbing (types, client functions, API routes, first-draft UI components) is being removed rather than left as unused dead code.
+
+## Phase 14 — Remaining polish
+- [ ] Generic **File** block: extend the Image block's upload mechanism to accept any file type (not just images), rendering by type (image/video inline, everything else as a file-icon + name + size download card) — no iframe embedding of external Google-Docs-style links, since reliably transforming arbitrary doc URLs into embeddable preview URLs isn't something to guess at; Bookmark already covers "paste an external doc link"
+- [x] Rich text size — added H1/H2/H3 as distinct toolbar buttons in `MarkdownEditor` (previously only one flat heading level existed). This is the real, Trello-compatible answer to "bigger text" — arbitrary font size and text color are **not viable** (Trello's description renderer only supports standard Markdown, no inline size/color, and doesn't render embedded HTML/CSS) — confirmed to the user directly rather than faking it with something that'd only work in our own UI and desync from real Trello
+- [ ] Theme toggle — light tokens already exist in `globals.css`, just needs a UI switch + persisted preference
+- [ ] Retry-on-429 — wrap `trelloFetch` with a backoff retry when Trello returns 429
+- [ ] Public share link surfacing — when a workspace board is public, show/copy its shareable URL somewhere in the UI
+
+## Phase 15 — Deploy prep
+- [ ] Can't actually deploy without the user's hosting account/credentials — scoping this to *preparation*: confirm build config is deploy-ready, document required production env vars, note the in-memory-cache-per-instance limitation clearly for whoever deploys
+- [ ] `.env.local.example` reviewed and accurate for production use
+- [ ] `NEXT_PUBLIC_APP_URL` / OAuth return URL behavior double-checked for a non-localhost deployment
+
+## Phase 16 — Our own table columns (replaces Trello Custom Fields)
+Same trick as blocks: a hidden marker as the first line of a card's `desc` (distinct prefix from the block marker so `isCanvasList()`'s detection is unaffected), just applied to table rows instead of canvas cards.
+- [ ] Column *schema* storage: a special hidden card per list (not shown as a row) holding the column definitions as JSON — mirrors how the board's `DaSpace` list already acts as hidden-in-plain-sight infrastructure
+- [ ] Column *value* storage: each row card gets a hidden `<!-- daspace:props={...} -->` marker prepended to its `desc`, ahead of the real description text
+- [ ] Add / edit / delete columns from the table view — deleting always confirms via a modal first
+- [ ] Column types: reuse the Text/Number/Date/Checkbox/Select set already designed (the UI from the abandoned Phase 13 attempt is largely reusable — same shapes, different storage backend)
+- [ ] Rename columns
+- [ ] Inline per-row editing, consistent with how Status/Members already work
+
+## Phase 17 — Label management — done
+Unlike Custom Fields, Trello Labels are fully API-manageable — no power-up, no manual-enable wall.
+- [x] Rename a label (`PUT /1/labels/{id}`) — inline text input, blur to save
+- [x] Change a label's color — swatch click opens a popover of the 10 Trello label colors
+- [x] Delete a label (`DELETE /1/labels/{id}`) — inline confirm ("Delete X? Removes it from every card.") before it fires, same safety principle requested for columns
+- [x] Create new labels for the board ("+ New label", starts unnamed + green, immediately editable)
+- [x] Lives in the new **Board Settings** surface (Phase 19)
+
+## Phase 18 — Sidebar & workspace UX fixes
+- [x] "+ New Page" in the sidebar now opens a modal (`Dialog`, matching `CreateWorkspaceButton`'s pattern) instead of editing inline in place
+- [x] Workspace home canvas header shows board members' avatars next to Invite — `WorkspaceMembers`, pulled from `GET /1/boards/{id}/memberships?member=true`, hover reveals each member's board role/"designation" (admin/normal/observer)
+
+## Phase 20 — Sidebar persistence bug — fixed
+Reported: clicking any sidebar page navigation caused the **entire UI including the sidebar** to vanish and get replaced by the loading skeleton. Root cause: no shared layout existed across `/home`, `/home/l/[listId]`, `/b/[boardId]`, `/b/[boardId]/l/[listId]` — each was an independent page that built its own `AppShell`+sidebar from scratch, so Next's route-level `loading.tsx` Suspense boundary replaced the *whole page*, sidebar included, on every navigation.
+- [x] Route group `src/app/(app)/` created, `home` and `b` moved inside it (URLs unchanged — route groups don't affect the path) so they share one layout
+- [x] `(app)/layout.tsx` — persistent shell: fetches `me`+`boards` once, renders `AppShell` with the sidebar, and `{children}` for whichever page is active. Doesn't remount on navigation between the four routes
+- [x] Sidebar (`WorkspaceSidebarShell`) is now a client component reading the current pathname to derive active-board/active-list state and fetch just the contextual "Pages" list via two new endpoints (`GET /api/boards/[boardId]/pages`, `GET /api/home/pages`) — only that section shows a Skeleton while loading; logo/Home link/Workspaces list/user footer never do, since they come from the layout and don't refetch
+- [x] Per-route `loading.tsx` trimmed to a content-area-only skeleton (`ContentSkeleton`, no sidebar shape anymore — the real sidebar stays mounted)
+- [x] Old `WorkspaceSidebar` (server component, one-shot-per-page) deleted, fully replaced
+
+## Phase 21 — Cover image for Home / workspace-home canvases — not started
+Requested again — matches `ref/workspace-page.png` and `ref/dashboard-page.png`, which both show a banner cover image. Storage: a hidden marker card within the `DaSpace` list (same infra-card pattern as Phase 16's column schema), holding the cover image as a real Trello attachment — no separate list, and nothing that ever requires opening real Trello to configure.
+- [ ] `isCoverCard(desc)` marker check in `src/lib/trello/blocks.ts`
+- [ ] `BlockCanvas` extracts the cover card before rendering the normal block list, shows it as a full-width banner above the title
+- [ ] "+ Add cover" hover affordance when none exists; upload via the same attachment mechanism as the Image block
+- [ ] Way to remove/replace an existing cover
+
+## Phase 19 — Board Settings surface — done
+- [x] `BoardSettingsSheet` — gear icon, positioned exactly where requested: members → Invite → Settings, right side of the workspace home header
+- [x] Right-side Sheet, currently hosts the Labels section; explicitly designed to grow ("More board settings will show up here over time" placeholder) as more Trello-API-backed admin features get added
+
+## Phase 22 — Block hover actions + composer/editor fixes — done
+Reported: non-text blocks (Page/Table/Bookmark/Image links) had **no way to edit or delete once created** — hovering did nothing.
+- [x] `BlockHoverActions` — shared component, Hugeicons `PencilEdit02Icon`/`Delete02Icon`, wrapped in the new shadcn `Tooltip` (added `TooltipProvider` to the root layout)
+- [x] `/api/blocks/[cardId]` extended: PATCH is now a generic read-modify-write for any block field (`type`/`ref`/`content`/`name`), not just text content; added DELETE (archives the card)
+- [x] **Page block** — hover Edit renames the underlying list inline (`PATCH /api/lists/[listId]`); hover Delete unlinks it from this page (archives the block card, does **not** delete the referenced list itself — it stays reachable elsewhere)
+- [x] **Table block** — hover Delete only; repositioned per follow-up feedback to live on the title row specifically (`CardTable` gained a `headerActions` slot), not as a floating overlay on the whole table
+- [x] **Bookmark block** — hover Edit switches to an inline URL input, re-saves via the generic PATCH; hover Delete archives it
+- [x] **Image block** — hover Delete archives it
+- [x] **Text block** — hover Delete added (previously had inline edit but no way to remove it); also: if editing empties out all the text, the block now **auto-deletes on blur** instead of lingering as an empty placeholder
+- [x] Block composer's default text-entry field is now a growing `<textarea>` instead of a single-line `<input>` — **Enter inserts a newline** (was previously impossible to write multi-line text), the block is created **on blur** instead of on Enter. Page/Table/Bookmark name-entry keeps the old single-line/Enter-submits behavior, since those are short names, not long-form content
+- [x] Status (`LabelPicker`) is now genuinely **single-select** — picking a new status removes whatever was previously selected instead of accumulating multiple labels; clicking the current status again clears it back to "Not started"
+
+## What's left (honest current state, 2026-08-08 end of session)
+- **Our own table columns** (Phase 16) — biggest remaining item, not started. Add/edit/rename/delete custom columns using the same hidden-metadata-in-`desc` trick as blocks, replacing the abandoned Trello-Custom-Fields approach.
+- **Cover image** (Phase 21) — not started, requested twice now.
+- **Generic File block** (Phase 14) — any file type, not just images.
+- **Smaller polish**: theme toggle, retry-on-429, public share-link surfacing, deploy prep.
+- **Unverified against the real Trello API** (built from documented behavior, never seen live): the Invite-by-email endpoint (`PUT /1/boards/{id}/members`).
+- **Known limitation**: server-side cache is per-process in-memory, won't share across multiple serverless instances if ever deployed somewhere like Vercel with multiple concurrent instances.

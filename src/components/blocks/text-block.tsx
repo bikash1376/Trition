@@ -2,11 +2,18 @@
 
 import { useState } from "react";
 import { MarkdownEditor } from "@/components/markdown-editor";
+import { BlockHoverActions } from "@/components/blocks/block-hover-actions";
 import { useDebouncedCallback } from "@/lib/use-debounced-callback";
 
 const SAVE_DEBOUNCE_MS = 10_000;
 
-export function TextBlock({ cardId, initialContent }: { cardId: string; initialContent: string }) {
+interface TextBlockProps {
+  cardId: string;
+  initialContent: string;
+  onDeleted: (cardId: string) => void;
+}
+
+export function TextBlock({ cardId, initialContent, onDeleted }: TextBlockProps) {
   const [value, setValue] = useState(initialContent);
 
   async function save(content: string) {
@@ -19,15 +26,31 @@ export function TextBlock({ cardId, initialContent }: { cardId: string; initialC
 
   const [debouncedSave, flushSave] = useDebouncedCallback(save, SAVE_DEBOUNCE_MS);
 
+  function remove() {
+    onDeleted(cardId);
+    fetch(`/api/blocks/${cardId}`, { method: "DELETE" });
+  }
+
+  function handleBlur() {
+    if (value.trim().length === 0) {
+      remove();
+      return;
+    }
+    flushSave(value);
+  }
+
   return (
-    <MarkdownEditor
-      value={value}
-      onChange={(next) => {
-        setValue(next);
-        debouncedSave(next);
-      }}
-      onBlur={() => flushSave(value)}
-      placeholder="Empty text block"
-    />
+    <div className="group relative">
+      <MarkdownEditor
+        value={value}
+        onChange={(next) => {
+          setValue(next);
+          debouncedSave(next);
+        }}
+        onBlur={handleBlur}
+        placeholder="Empty text block"
+      />
+      <BlockHoverActions onDelete={remove} />
+    </div>
   );
 }

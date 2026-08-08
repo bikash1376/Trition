@@ -33,6 +33,7 @@ interface CardDetail {
 interface CardDetailSheetProps {
   cardId: string | null;
   boardMembers: TrelloMember[];
+  me: TrelloMember;
   onOpenChange: (open: boolean) => void;
   onRenamed: (cardId: string, name: string) => void;
   onArchived: (cardId: string) => void;
@@ -42,6 +43,7 @@ interface CardDetailSheetProps {
 export function CardDetailSheet({
   cardId,
   boardMembers,
+  me,
   onOpenChange,
   onRenamed,
   onArchived,
@@ -53,7 +55,6 @@ export function CardDetailSheet({
   const [desc, setDesc] = useState("");
   const [descStatus, setDescStatus] = useState<"idle" | "pending" | "saved">("idle");
   const [commentText, setCommentText] = useState("");
-  const [posting, setPosting] = useState(false);
 
   useEffect(() => {
     if (!cardId) return;
@@ -87,20 +88,20 @@ export function CardDetailSheet({
     };
   }, [cardId]);
 
-  async function saveName() {
+  function saveName() {
     if (!cardId || !detail || name.trim() === detail.card.name) return;
     const trimmed = name.trim();
     if (!trimmed) {
       setName(detail.card.name);
       return;
     }
-    await fetch(`/api/cards/${cardId}`, {
+    onRenamed(cardId, trimmed);
+    setDetail({ ...detail, card: { ...detail.card, name: trimmed } });
+    fetch(`/api/cards/${cardId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: trimmed }),
     });
-    onRenamed(cardId, trimmed);
-    setDetail({ ...detail, card: { ...detail.card, name: trimmed } });
   }
 
   const [debouncedSaveDesc] = useDebouncedCallback(async (id: string, value: string) => {
@@ -120,26 +121,40 @@ export function CardDetailSheet({
     debouncedSaveDesc(cardId, value);
   }
 
-  async function submitComment() {
+  function submitComment() {
     if (!cardId || commentText.trim().length === 0) return;
-    setPosting(true);
-    const res = await fetch(`/api/cards/${cardId}/comments`, {
+    const text = commentText.trim();
+    setCommentText("");
+
+    const tempId = `temp-${Date.now()}`;
+    const tempComment: TrelloCommentAction = {
+      id: tempId,
+      date: new Date().toISOString(),
+      data: { text },
+      memberCreator: me,
+    };
+    setDetail((prev) => (prev ? { ...prev, comments: [tempComment, ...prev.comments] } : prev));
+
+    fetch(`/api/cards/${cardId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: commentText.trim() }),
-    });
-    setPosting(false);
-    if (!res.ok) return;
-    const { comment } = await res.json();
-    setDetail((prev) => (prev ? { ...prev, comments: [comment, ...prev.comments] } : prev));
-    setCommentText("");
+      body: JSON.stringify({ text }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setDetail((prev) => {
+          if (!prev) return prev;
+          if (!data) return { ...prev, comments: prev.comments.filter((c) => c.id !== tempId) };
+          return { ...prev, comments: prev.comments.map((c) => (c.id === tempId ? data.comment : c)) };
+        });
+      });
   }
 
-  async function archive() {
+  function archive() {
     if (!cardId) return;
-    await fetch(`/api/cards/${cardId}`, { method: "DELETE" });
     onArchived(cardId);
     onOpenChange(false);
+    fetch(`/api/cards/${cardId}`, { method: "DELETE" });
   }
 
   return (
@@ -235,7 +250,7 @@ export function CardDetailSheet({
                   <Button
                     size="icon-sm"
                     variant="secondary"
-                    disabled={posting || commentText.trim().length === 0}
+                    disabled={commentText.trim().length === 0}
                     onClick={submitComment}
                   >
                     <HugeiconsIcon icon={SentIcon} size={16} />

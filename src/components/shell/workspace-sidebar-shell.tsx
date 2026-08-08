@@ -1,9 +1,14 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Building03Icon, Home01Icon, LockedIcon, Logout03Icon } from "@hugeicons/core-free-icons";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DaSpaceMark } from "@/components/icons";
 import { SidebarPageLink } from "@/components/shell/sidebar-page-link";
 import { NavLinkSpinner } from "@/components/shell/nav-link-spinner";
@@ -11,27 +16,56 @@ import { CreateWorkspaceButton } from "@/components/shell/create-workspace-butto
 import { NewPageButton } from "@/components/shell/new-page-button";
 import type { TrelloBoard, TrelloList, TrelloMember } from "@/lib/trello/types";
 
-interface WorkspaceSidebarProps {
+interface WorkspaceSidebarShellProps {
   me: TrelloMember;
   boards: TrelloBoard[];
-  homeActive: boolean;
-  activeBoardId?: string;
-  pageHrefBase: string;
-  pagesBoardId: string;
-  lists: TrelloList[];
-  activeListId?: string;
 }
 
-export function WorkspaceSidebar({
-  me,
-  boards,
-  homeActive,
-  activeBoardId,
-  pageHrefBase,
-  pagesBoardId,
-  lists,
-  activeListId,
-}: WorkspaceSidebarProps) {
+function deriveContext(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments[0] === "b" && segments[1]) {
+    return {
+      kind: "board" as const,
+      boardId: segments[1],
+      activeListId: segments[2] === "l" ? segments[3] : undefined,
+      pageHrefBase: `/b/${segments[1]}`,
+      pagesUrl: `/api/boards/${segments[1]}/pages`,
+    };
+  }
+  return {
+    kind: "home" as const,
+    activeListId: segments[0] === "home" && segments[1] === "l" ? segments[2] : undefined,
+    pageHrefBase: "/home",
+    pagesUrl: "/api/home/pages",
+  };
+}
+
+export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps) {
+  const pathname = usePathname();
+  const context = deriveContext(pathname);
+
+  const [pagesData, setPagesData] = useState<{ contextKey: string; lists: TrelloList[]; boardId: string } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(context.pagesUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setPagesData({ contextKey: context.pagesUrl, lists: data.lists, boardId: data.boardId });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [context.pagesUrl]);
+
+  const loadingPages = !pagesData || pagesData.contextKey !== context.pagesUrl;
+  const pages = loadingPages ? null : pagesData;
+
+  const homeActive = context.kind === "home";
+  const activeBoardId = context.kind === "board" ? context.boardId : undefined;
+
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-2 px-3 py-3">
@@ -89,24 +123,31 @@ export function WorkspaceSidebar({
         <div className="px-2 py-2">
           <div className="flex items-center justify-between px-2 pb-1">
             <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Pages</p>
-            <NewPageButton boardId={pagesBoardId} pageHrefBase={pageHrefBase} />
+            {pages && <NewPageButton boardId={pages.boardId} pageHrefBase={context.pageHrefBase} />}
           </div>
-          <nav className="flex flex-col gap-0.5">
-            {lists.map((list) => (
-              <SidebarPageLink
-                key={list.id}
-                listId={list.id}
-                href={`${pageHrefBase}/l/${list.id}`}
-                name={list.name}
-                active={list.id === activeListId}
-              />
-            ))}
-            {lists.length === 0 && (
-              <p className="px-2 py-1.5 text-xs text-muted-foreground">
-                {homeActive ? "No personal pages yet." : "No pages on this board yet."}
-              </p>
-            )}
-          </nav>
+          {loadingPages || !pages ? (
+            <div className="flex flex-col gap-1.5 px-2 py-1">
+              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-3/4" />
+            </div>
+          ) : (
+            <nav className="flex flex-col gap-0.5">
+              {pages.lists.map((list) => (
+                <SidebarPageLink
+                  key={list.id}
+                  listId={list.id}
+                  href={`${context.pageHrefBase}/l/${list.id}`}
+                  name={list.name}
+                  active={list.id === context.activeListId}
+                />
+              ))}
+              {pages.lists.length === 0 && (
+                <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                  {homeActive ? "No personal pages yet." : "No pages on this board yet."}
+                </p>
+              )}
+            </nav>
+          )}
         </div>
       </ScrollArea>
 

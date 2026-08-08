@@ -47,6 +47,13 @@ export interface TrelloAttachment {
   bytes: number | null;
 }
 
+export interface TrelloBoardMembership {
+  id: string;
+  idMember: string;
+  memberType: "admin" | "normal" | "observer";
+  member: TrelloMember;
+}
+
 export interface TrelloCommentAction {
   id: string;
   date: string;

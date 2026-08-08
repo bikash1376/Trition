@@ -14,3 +14,5 @@ const LABEL_COLORS: Record<string, string> = {
 export function labelColor(color: string | null) {
   return color ? (LABEL_COLORS[color] ?? "#8c9bab") : "#8c9bab";
 }
+
+export const LABEL_COLOR_NAMES = Object.keys(LABEL_COLORS);

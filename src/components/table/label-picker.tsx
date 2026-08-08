@@ -16,13 +16,34 @@ export function LabelPicker({ cardId, selected, options, onChange, children }: L
   const namedOptions = options.filter((label) => label.name.trim().length > 0);
   const selectedIds = new Set(selected.map((label) => label.id));
 
-  async function toggle(label: TrelloLabel) {
+  function toggle(label: TrelloLabel) {
     const isSelected = selectedIds.has(label.id);
-    onChange(isSelected ? selected.filter((l) => l.id !== label.id) : [...selected, label]);
-    await fetch(`/api/cards/${cardId}/labels`, {
+
+    if (isSelected) {
+      // Clicking the current status again clears it back to "Not started"
+      onChange([]);
+      fetch(`/api/cards/${cardId}/labels`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labelId: label.id, add: false }),
+      });
+      return;
+    }
+
+    // Status is single-select: picking a new one replaces whatever was selected before
+    const previous = selected;
+    onChange([label]);
+    for (const prev of previous) {
+      fetch(`/api/cards/${cardId}/labels`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labelId: prev.id, add: false }),
+      });
+    }
+    fetch(`/api/cards/${cardId}/labels`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ labelId: label.id, add: !isSelected }),
+      body: JSON.stringify({ labelId: label.id, add: true }),
     });
   }
 

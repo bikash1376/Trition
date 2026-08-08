@@ -11,7 +11,13 @@ export function CardAttachments({ cardId, attachments }: { cardId: string; attac
         if (isImageAttachment(attachment.mimeType, attachment.name, attachment.url)) {
           return (
             // eslint-disable-next-line @next/next/no-img-element
-            <img key={attachment.id} src={src} alt={attachment.name} className="rounded-md border border-border" />
+            <img
+              key={attachment.id}
+              src={src}
+              alt={attachment.name}
+              loading="lazy"
+              className="rounded-md border border-border"
+            />
           );
         }
         if (isVideoAttachment(attachment.mimeType, attachment.name, attachment.url)) {

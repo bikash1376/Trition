@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon } from "@hugeicons/core-free-icons";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export function NewPageButton({ boardId, pageHrefBase }: { boardId: string; pageHrefBase: string }) {
   const router = useRouter();
@@ -28,31 +32,35 @@ export function NewPageButton({ boardId, pageHrefBase }: { boardId: string; page
     router.refresh();
   }
 
-  if (open) {
-    return (
-      <input
-        autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && create()}
-        onBlur={() => {
-          if (!name.trim()) setOpen(false);
-        }}
-        disabled={creating}
-        placeholder="Page name…"
-        className="w-24 rounded border-none bg-sidebar-accent px-1.5 py-0.5 text-xs outline-none"
-      />
-    );
-  }
-
   return (
-    <button
-      type="button"
-      onClick={() => setOpen(true)}
-      className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-    >
-      <HugeiconsIcon icon={Add01Icon} size={11} />
-      New
-    </button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={<button type="button" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground" />}
+      >
+        <HugeiconsIcon icon={Add01Icon} size={11} />
+        New
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New page</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="new-page-name">Name</Label>
+          <Input
+            id="new-page-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && create()}
+            placeholder="Untitled"
+            autoFocus
+          />
+        </div>
+        <DialogFooter>
+          <Button onClick={create} disabled={creating || !name.trim()}>
+            Create page
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -34,6 +34,7 @@ interface CardTableProps {
   labels: TrelloLabel[];
   me: TrelloMember;
   compact?: boolean;
+  headerActions?: React.ReactNode;
 }
 
 type SortKey = "name" | "status" | "members" | "createdBy";
@@ -46,11 +47,19 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "createdBy", label: "Created By" },
 ];
 
-export function CardTable({ listId, pageTitle, rows: initialRows, members, labels, me, compact }: CardTableProps) {
+export function CardTable({
+  listId,
+  pageTitle,
+  rows: initialRows,
+  members,
+  labels,
+  me,
+  compact,
+  headerActions,
+}: CardTableProps) {
   const [rows, setRows] = useState(initialRows);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [newCardName, setNewCardName] = useState("");
-  const [adding, setAdding] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [filterMemberIds, setFilterMemberIds] = useState<Set<string>>(new Set());
@@ -120,30 +129,51 @@ export function CardTable({ listId, pageTitle, rows: initialRows, members, label
     });
   }
 
-  async function addCard() {
+  function addCard() {
     const name = newCardName.trim();
     if (!name) return;
-    setAdding(true);
-    const res = await fetch(`/api/lists/${listId}/cards`, {
+    setNewCardName("");
+
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tempCard: TrelloCard = {
+      id: tempId,
+      name,
+      desc: "",
+      idList: listId,
+      idBoard: "",
+      idMembers: [me.id],
+      labels: [],
+      due: null,
+      closed: false,
+      shortUrl: "",
+    };
+    setRows((prev) => [...prev, { card: tempCard, creator: me }]);
+
+    fetch(`/api/lists/${listId}/cards`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
-    });
-    setAdding(false);
-    if (!res.ok) return;
-    const { card } = await res.json();
-    setRows((prev) => [...prev, { card: { ...card, idMembers: [me.id] }, creator: me }]);
-    setNewCardName("");
-    fetch(`/api/cards/${card.id}/members`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ memberId: me.id, add: true }),
-    });
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) {
+          setRows((prev) => prev.filter((r) => r.card.id !== tempId));
+          return;
+        }
+        setRows((prev) =>
+          prev.map((r) => (r.card.id === tempId ? { card: { ...data.card, idMembers: [me.id] }, creator: me } : r)),
+        );
+        fetch(`/api/cards/${data.card.id}/members`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ memberId: me.id, add: true }),
+        });
+      });
   }
 
-  async function deleteCard(cardId: string) {
+  function deleteCard(cardId: string) {
     setRows((prev) => prev.filter((r) => r.card.id !== cardId));
-    await fetch(`/api/cards/${cardId}`, { method: "DELETE" });
+    fetch(`/api/cards/${cardId}`, { method: "DELETE" });
   }
 
   function handleRenamed(cardId: string, name: string) {
@@ -166,12 +196,15 @@ export function CardTable({ listId, pageTitle, rows: initialRows, members, label
 
   return (
     <div className={compact ? "flex flex-col" : "flex h-full flex-col px-8 py-8"}>
-      <div className="mb-4 flex items-center justify-between">
-        {compact ? (
-          <h2 className="text-lg font-semibold">{pageTitle}</h2>
-        ) : (
-          <EditableTitle listId={listId} initialName={pageTitle} className="text-2xl font-bold" />
-        )}
+      <div className="group mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <EditableTitle
+            listId={listId}
+            initialName={pageTitle}
+            className={compact ? "text-lg font-semibold" : "text-2xl font-bold"}
+          />
+          {headerActions}
+        </div>
         <Popover>
           <PopoverTrigger
             render={<Button variant="outline" size="sm" className="gap-1.5" />}
@@ -312,11 +345,10 @@ export function CardTable({ listId, pageTitle, rows: initialRows, members, label
             onChange={(e) => setNewCardName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addCard()}
             placeholder="New card"
-            disabled={adding}
             className="h-7 border-none px-0 shadow-none focus-visible:ring-0"
           />
           {newCardName.trim().length > 0 && (
-            <Button size="sm" onClick={addCard} disabled={adding}>
+            <Button size="sm" onClick={addCard}>
               Add
             </Button>
           )}
@@ -326,6 +358,7 @@ export function CardTable({ listId, pageTitle, rows: initialRows, members, label
       <CardDetailSheet
         cardId={selectedCardId}
         boardMembers={members}
+        me={me}
         onOpenChange={(open) => !open && setSelectedCardId(null)}
         onRenamed={handleRenamed}
         onArchived={handleArchived}
