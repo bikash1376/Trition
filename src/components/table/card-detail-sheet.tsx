@@ -242,7 +242,7 @@ export function CardDetailSheet({
 
               <div className="flex flex-col gap-3">
                 <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Comments</p>
-                <div className="flex gap-2">
+                <div className="flex items-end gap-2">
                   <Textarea
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}

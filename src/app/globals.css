@@ -157,6 +157,30 @@
   }
 }
 
+@keyframes brand-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.brand-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    currentColor 40%,
+    color-mix(in oklch, currentColor 40%, white) 50%,
+    currentColor 60%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.brand-shimmer:hover {
+  animation: brand-shimmer 1.1s ease-in-out;
+}
+
 .prose-daspace {
   @apply text-sm leading-6 break-words;
 }

@@ -35,10 +35,14 @@ export function NewPageButton({ boardId, pageHrefBase }: { boardId: string; page
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        render={<button type="button" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground" />}
+        render={
+          <button
+            type="button"
+            className="rounded p-0.5 text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
+          />
+        }
       >
-        <HugeiconsIcon icon={Add01Icon} size={11} />
-        New
+        <HugeiconsIcon icon={Add01Icon} size={14} />
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

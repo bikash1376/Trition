@@ -36,9 +36,14 @@ export function CreateWorkspaceButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        render={<Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" />}
+        render={
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-sidebar-accent/60"
+          />
+        }
       >
-        <HugeiconsIcon icon={Add01Icon} size={14} />
+        <HugeiconsIcon icon={Add01Icon} size={16} className="shrink-0" />
         New workspace
       </DialogTrigger>
       <DialogContent>
@@ -62,14 +67,14 @@ export function CreateWorkspaceButton() {
             <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as "private" | "public")}>
               <div className="flex items-start gap-2">
                 <RadioGroupItem value="private" id="visibility-private" className="mt-0.5" />
-                <Label htmlFor="visibility-private" className="flex flex-col gap-0.5 font-normal">
+                <Label htmlFor="visibility-private" className="flex flex-col items-start gap-0.5 text-left font-normal">
                   <span className="font-medium">Private</span>
                   <span className="text-xs text-muted-foreground">Only you can see and edit this workspace.</span>
                 </Label>
               </div>
               <div className="flex items-start gap-2">
                 <RadioGroupItem value="public" id="visibility-public" className="mt-0.5" />
-                <Label htmlFor="visibility-public" className="flex flex-col gap-0.5 font-normal">
+                <Label htmlFor="visibility-public" className="flex flex-col items-start gap-0.5 text-left font-normal">
                   <span className="font-medium">Public</span>
                   <span className="text-xs text-muted-foreground">Anyone with the link can view it.</span>
                 </Label>

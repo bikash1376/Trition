@@ -4,12 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Building03Icon, Home01Icon, LockedIcon, Logout03Icon } from "@hugeicons/core-free-icons";
+import { Archive04Icon, CorporateIcon, Home01Icon, Logout03Icon, UserLock01Icon } from "@hugeicons/core-free-icons";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DaSpaceMark } from "@/components/icons";
 import { SidebarPageLink } from "@/components/shell/sidebar-page-link";
 import { NavLinkSpinner } from "@/components/shell/nav-link-spinner";
 import { CreateWorkspaceButton } from "@/components/shell/create-workspace-button";
@@ -68,9 +67,8 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-2 px-3 py-3">
-        <DaSpaceMark className="h-5 w-5" />
-        <span className="font-script text-lg leading-none">Trition</span>
+      <div className="flex items-center px-3 py-3">
+        <span className="brand-shimmer font-script text-2xl leading-none">Trition</span>
       </div>
 
       <Separator className="bg-sidebar-border" />
@@ -107,11 +105,12 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
                     : "hover:bg-sidebar-accent/60"
                 }`}
               >
-                <HugeiconsIcon icon={Building03Icon} size={16} className="shrink-0" />
+                <HugeiconsIcon
+                  icon={board.prefs?.permissionLevel === "org" ? CorporateIcon : UserLock01Icon}
+                  size={16}
+                  className="shrink-0"
+                />
                 <span className="min-w-0 flex-1 truncate">{board.name}</span>
-                {board.prefs?.permissionLevel === "private" && (
-                  <HugeiconsIcon icon={LockedIcon} size={12} className="shrink-0 text-muted-foreground" />
-                )}
                 <NavLinkSpinner />
               </Link>
             ))}
@@ -142,9 +141,9 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
                 />
               ))}
               {pages.lists.length === 0 && (
-                <p className="px-2 py-1.5 text-xs text-muted-foreground">
-                  {homeActive ? "No personal pages yet." : "No pages on this board yet."}
-                </p>
+                <div className="flex items-center justify-center py-4">
+                  <HugeiconsIcon icon={Archive04Icon} size={20} className="text-muted-foreground" />
+                </div>
               )}
             </nav>
           )}
