@@ -1,9 +1,14 @@
 export interface WorkspaceSettings {
   showLastEditedColumn: boolean;
+  // Lists created as a Table block's embedded backing store — not real pages, so they're
+  // excluded from sidebar navigation and "link to an existing page" search. Page blocks'
+  // backing lists are deliberately NOT tracked here; those are meant to be real pages.
+  tableListIds: string[];
 }
 
 export const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   showLastEditedColumn: true,
+  tableListIds: [],
 };
 
 // Hidden marker prepended to the board's own `desc` field — same trick used for block/column/props

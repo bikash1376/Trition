@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getTrelloToken } from "@/lib/trello/session";
-import { createBoard, getBoardLists, getMyBoards, TrelloApiError } from "@/lib/trello/client";
+import { createBoard, getBoard, getBoardLists, getMyBoards, TrelloApiError } from "@/lib/trello/client";
 import { HOME_LIST_NAME, PERSONAL_BOARD_NAME } from "@/lib/trello/blocks";
+import { parseWorkspaceSettings } from "@/lib/trello/board-settings";
 
 export async function GET() {
   const token = await getTrelloToken();
@@ -11,9 +12,13 @@ export async function GET() {
     const boards = await getMyBoards(token);
     const personalBoard =
       boards.find((b) => b.name === PERSONAL_BOARD_NAME) ?? (await createBoard(PERSONAL_BOARD_NAME, token));
-    const lists = await getBoardLists(personalBoard.id, token);
+    const [lists, board] = await Promise.all([
+      getBoardLists(personalBoard.id, token),
+      getBoard(personalBoard.id, token),
+    ]);
+    const { settings } = parseWorkspaceSettings(board.desc);
     return NextResponse.json({
-      lists: lists.filter((l) => l.name !== HOME_LIST_NAME),
+      lists: lists.filter((l) => l.name !== HOME_LIST_NAME && !settings.tableListIds.includes(l.id)),
       boardId: personalBoard.id,
     });
   } catch (err) {

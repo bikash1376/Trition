@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import {
+  getBoard,
   getBoardLabels,
   getBoardLists,
   getBoardMembers,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/trello/client";
 import { requireToken, withAuthGuard } from "@/lib/trello/guard";
 import { HOME_LIST_NAME, PERSONAL_BOARD_NAME, isBlockCard } from "@/lib/trello/blocks";
+import { parseWorkspaceSettings } from "@/lib/trello/board-settings";
 import { COLUMNS_SCHEMA_CARD_NAME, parseCardProps, parseColumnSchema, type CardProps, type ColumnDef } from "@/lib/trello/columns";
 import { BlockCanvas } from "@/components/blocks/block-canvas";
 import type { TrelloLabel, TrelloMember } from "@/lib/trello/types";
@@ -23,14 +25,15 @@ export default async function HomeListPage({ params }: { params: Promise<{ listI
   const personalBoard = allBoards.find((b) => b.name === PERSONAL_BOARD_NAME);
   if (!personalBoard) redirect("/home");
 
-  const [lists, cards] = await withAuthGuard(
-    Promise.all([getBoardLists(personalBoard.id, token), getListCards(listId, token)]),
+  const [lists, cards, board] = await withAuthGuard(
+    Promise.all([getBoardLists(personalBoard.id, token), getListCards(listId, token), getBoard(personalBoard.id, token)]),
   );
+  const { settings } = parseWorkspaceSettings(board.desc);
 
   const activeList = lists.find((list) => list.id === listId);
   if (!activeList || activeList.name === HOME_LIST_NAME) redirect("/home");
 
-  const pages = lists.filter((list) => list.name !== HOME_LIST_NAME);
+  const pages = lists.filter((list) => list.name !== HOME_LIST_NAME && !settings.tableListIds.includes(list.id));
   const pageNames = Object.fromEntries(pages.map((list) => [list.id, list.name]));
 
   const schemaCard = cards.find((card) => card.name === COLUMNS_SCHEMA_CARD_NAME);

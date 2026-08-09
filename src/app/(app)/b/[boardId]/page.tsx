@@ -1,6 +1,7 @@
 import { createList, getBoard, getBoardLists, getBoardMemberships, getListCards, getMe } from "@/lib/trello/client";
 import { requireToken, withAuthGuard } from "@/lib/trello/guard";
 import { COVER_CARD_NAME, HOME_LIST_NAME } from "@/lib/trello/blocks";
+import { parseWorkspaceSettings } from "@/lib/trello/board-settings";
 import { BlockCanvas } from "@/components/blocks/block-canvas";
 
 export default async function BoardHomePage({ params }: { params: Promise<{ boardId: string }> }) {
@@ -18,7 +19,8 @@ export default async function BoardHomePage({ params }: { params: Promise<{ boar
 
   const homeList =
     lists.find((l) => l.name === HOME_LIST_NAME) ?? (await withAuthGuard(createList(boardId, HOME_LIST_NAME, token)));
-  const pages = lists.filter((l) => l.id !== homeList.id);
+  const { settings } = parseWorkspaceSettings(board.desc);
+  const pages = lists.filter((l) => l.id !== homeList.id && !settings.tableListIds.includes(l.id));
 
   const allCards = await withAuthGuard(getListCards(homeList.id, token));
   const coverCard = allCards.find((c) => c.name === COVER_CARD_NAME);

@@ -24,14 +24,15 @@ export default async function ListPage({
   const { boardId, listId } = await params;
   const token = await requireToken();
 
-  const [me, lists, cards] = await withAuthGuard(
-    Promise.all([getMe(token), getBoardLists(boardId, token), getListCards(listId, token)]),
+  const [me, board, lists, cards] = await withAuthGuard(
+    Promise.all([getMe(token), getBoard(boardId, token), getBoardLists(boardId, token), getListCards(listId, token)]),
   );
+  const { settings } = parseWorkspaceSettings(board.desc);
 
   const activeList = lists.find((list) => list.id === listId);
   if (!activeList || activeList.name === HOME_LIST_NAME) redirect(`/b/${boardId}`);
 
-  const pages = lists.filter((list) => list.name !== HOME_LIST_NAME);
+  const pages = lists.filter((list) => list.name !== HOME_LIST_NAME && !settings.tableListIds.includes(list.id));
   const pageNames = Object.fromEntries(pages.map((list) => [list.id, list.name]));
 
   const schemaCard = cards.find((card) => card.name === COLUMNS_SCHEMA_CARD_NAME);
@@ -44,15 +45,9 @@ export default async function ListPage({
   let tableRows: { card: (typeof cards)[number]; creator: TrelloMember | null; lastEditor: TrelloMember | null; props: CardProps }[] =
     [];
   if (tableCards.length > 0) {
-    const [[fetchedMembers, fetchedLabels], board] = await withAuthGuard(
-      Promise.all([
-        Promise.all([getBoardMembers(boardId, token), getBoardLabels(boardId, token)]),
-        getBoard(boardId, token),
-      ]),
+    [members, labels] = await withAuthGuard(
+      Promise.all([getBoardMembers(boardId, token), getBoardLabels(boardId, token)]),
     );
-    members = fetchedMembers;
-    labels = fetchedLabels;
-    const { settings } = parseWorkspaceSettings(board.desc);
 
     const creators = await withAuthGuard(Promise.all(tableCards.map((card) => getCardCreator(card.id, token))));
     const lastEditors = settings.showLastEditedColumn

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getTrelloToken } from "@/lib/trello/session";
-import { createCard, createList, TrelloApiError } from "@/lib/trello/client";
+import { createCard, createList, getBoard, updateBoard, TrelloApiError } from "@/lib/trello/client";
+import { invalidate } from "@/lib/trello/cache";
 import { serializeBlock } from "@/lib/trello/blocks";
+import { parseWorkspaceSettings, serializeWorkspaceSettings } from "@/lib/trello/board-settings";
 
 export async function POST(request: Request, { params }: { params: Promise<{ listId: string }> }) {
   const { listId } = await params;
@@ -26,6 +28,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ lis
           return NextResponse.json({ error: "boardId is required for page/table blocks" }, { status: 400 });
         }
         list = await createList(boardId, name, token);
+        if (type === "table") {
+          const board = await getBoard(boardId, token);
+          const { settings, rest } = parseWorkspaceSettings(board.desc);
+          const next = { ...settings, tableListIds: [...settings.tableListIds, list.id] };
+          await updateBoard(boardId, { desc: serializeWorkspaceSettings(next, rest) }, token);
+          invalidate(`board:${boardId}`);
+        }
       }
       const desc = serializeBlock(type, list.id, "");
       const card = await createCard(listId, name, token, desc);

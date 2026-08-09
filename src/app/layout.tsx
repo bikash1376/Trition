@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader, Yesteryear } from "next/font/google";
 import Script from "next/script";
+import { Databuddy } from "@databuddy/sdk/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { THEME_STORAGE_KEY } from "@/lib/theme-constants";
 import { appUrl } from "@/lib/trello/env";
@@ -81,6 +82,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           } catch (e) {}`}
         </Script>
         <TooltipProvider delay={300}>{children}</TooltipProvider>
+        {process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID && (
+          <Databuddy clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID} trackWebVitals trackErrors />
+        )}
       </body>
     </html>
   );

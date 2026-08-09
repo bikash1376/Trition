@@ -15,6 +15,7 @@ A Notion-like workspace UI using Trello as a headless database. No custom databa
 - Hugeicons (`@hugeicons/react` + free `@hugeicons/core-free-icons`) for icons — not lucide-react
 - `motion` (framer-motion) for the sidebar brand shimmer
 - Auth: Trello OAuth1.0a token flow (no app-owned accounts). Google is present in the UI but disabled — no backend for it yet.
+- [Databuddy](https://www.databuddy.cc) for privacy-conscious analytics — optional, only mounts if `NEXT_PUBLIC_DATABUDDY_CLIENT_ID` is set
 
 ## Running locally / self-hosting
 
@@ -41,6 +42,7 @@ Trition has no database of its own and no app-owned user accounts — the only e
    | `TRELLO_API_KEY` | Yes | From step 2. Server-only — never sent to the browser. |
    | `TRELLO_API_SECRET` | No | Present in `.env.local.example` for completeness, but unused — the app uses Trello's OAuth1.0a **token** flow, which needs no client secret (see "Auth flow" below). |
    | `NEXT_PUBLIC_APP_URL` | Yes | The URL the app is actually served from, e.g. `http://localhost:3211` locally or `https://your-domain.com` in production. Used to build the Trello OAuth `return_url` — **must exactly match** where the app is running, or login will silently fail to return. |
+   | `NEXT_PUBLIC_DATABUDDY_CLIENT_ID` | No | [Databuddy](https://www.databuddy.cc) analytics client id. Leave blank to skip analytics entirely — the tracker only mounts if this is set. |
 
    `.env*` is already gitignored — never commit real keys.
 
@@ -87,7 +89,7 @@ There's no app database — everything is derived live from Trello, using a few 
 | Table row | A plain card in a list that isn't marked as a block |
 | Custom table column | A JSON schema stored on a hidden sentinel card per list (`src/lib/trello/columns.ts`), values stored as a hidden marker prepended to each row card's `desc` |
 | Cover image | A hidden sentinel card in the workspace's home list, holding the attachment id + configured height |
-| Workspace settings (e.g. "show Last Edited column") | A hidden marker on the **board's own `desc` field** (`src/lib/trello/board-settings.ts`) — workspace-wide, not per-list |
+| Workspace settings (e.g. "show Last Edited column", which lists back a Table block's own list) | A hidden marker on the **board's own `desc` field** (`src/lib/trello/board-settings.ts`) — workspace-wide, not per-list |
 | "Home" (personal space) | A dedicated private board per user, `DaSpace Personal` |
 
 Everywhere a marker is used, reads strip it before handing data to the client and writes re-merge it so an unrelated edit (e.g. changing a card's description) can never clobber the hidden metadata.
