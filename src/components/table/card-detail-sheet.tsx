@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { SentIcon } from "@hugeicons/core-free-icons";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -15,9 +15,11 @@ import { MemberPicker } from "@/components/table/member-picker";
 import { StatusPills } from "@/components/table/status-pills";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import { CustomCell } from "@/components/table/custom-cell";
 import { readLocalCache, writeLocalCache } from "@/lib/local-cache";
 import { useDebouncedCallback } from "@/lib/use-debounced-callback";
 import type { TrelloAttachment, TrelloCard, TrelloCommentAction, TrelloLabel, TrelloMember } from "@/lib/trello/types";
+import type { CardProps, ColumnDef, PropsValue } from "@/lib/trello/columns";
 
 const BOARD_LABELS_TTL = 10 * 60_000;
 const SAVE_DEBOUNCE_MS = 10_000;
@@ -29,6 +31,7 @@ interface CardDetail {
   lastEditor: TrelloMember | null;
   comments: TrelloCommentAction[];
   attachments: TrelloAttachment[];
+  props: CardProps;
 }
 
 interface CardDetailSheetProps {
@@ -52,6 +55,7 @@ export function CardDetailSheet({
 }: CardDetailSheetProps) {
   const [detail, setDetail] = useState<CardDetail | null>(null);
   const [boardLabels, setBoardLabels] = useState<TrelloLabel[]>([]);
+  const [columns, setColumns] = useState<ColumnDef[]>([]);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [descStatus, setDescStatus] = useState<"idle" | "pending" | "saved">("idle");
@@ -71,24 +75,44 @@ export function CardDetailSheet({
         setName(data.card.name);
         setDesc(data.card.desc);
         setDescStatus("idle");
+        setColumns([]);
 
         const cacheKey = `daspace:board-labels:${data.card.idBoard}`;
         const fromCache = readLocalCache<TrelloLabel[]>(cacheKey);
         if (fromCache) {
           setBoardLabels(fromCache);
-          return;
+        } else {
+          const res = await fetch(`/api/boards/${data.card.idBoard}/labels`);
+          if (!res.ok || cancelled) return;
+          const { labels } = await res.json();
+          setBoardLabels(labels);
+          writeLocalCache(cacheKey, labels, BOARD_LABELS_TTL);
         }
-        const res = await fetch(`/api/boards/${data.card.idBoard}/labels`);
-        if (!res.ok || cancelled) return;
-        const { labels } = await res.json();
-        setBoardLabels(labels);
-        writeLocalCache(cacheKey, labels, BOARD_LABELS_TTL);
+
+        const columnsRes = await fetch(`/api/lists/${data.card.idList}/columns`);
+        if (!columnsRes.ok || cancelled) return;
+        const { columns: fetchedColumns } = await columnsRes.json();
+        setColumns(fetchedColumns);
       });
 
     return () => {
       cancelled = true;
     };
   }, [cardId]);
+
+  function handlePropChanged(columnId: string, value: PropsValue) {
+    setDetail((prev) => (prev ? { ...prev, props: { ...prev.props, [columnId]: value } } : prev));
+    if (!cardId) return;
+    fetch(`/api/cards/${cardId}/props`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ columnId, value }),
+    });
+  }
+
+  function handleAttachmentDeleted(attachmentId: string) {
+    setDetail((prev) => (prev ? { ...prev, attachments: prev.attachments.filter((a) => a.id !== attachmentId) } : prev));
+  }
 
   function saveName() {
     if (!cardId || !detail || name.trim() === detail.card.name) return;
@@ -164,7 +188,7 @@ export function CardDetailSheet({
       <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-md">
         {detail ? (
           <>
-            <SheetHeader>
+            <SheetHeader className="px-5">
               <SheetTitle className="sr-only">{detail.card.name}</SheetTitle>
               <Input
                 value={name}
@@ -174,8 +198,8 @@ export function CardDetailSheet({
               />
             </SheetHeader>
 
-            <div className="flex flex-col gap-3 px-4 pb-4 text-sm">
-              <div className="grid grid-cols-[100px_1fr] items-center gap-y-2">
+            <div className="flex flex-col gap-4 px-5 pt-1 pb-5 text-sm">
+              <div className="grid grid-cols-[120px_1fr] items-center gap-x-4 gap-y-3">
                 <span className="text-muted-foreground">Members</span>
                 <MemberPicker
                   cardId={detail.card.id}
@@ -222,6 +246,17 @@ export function CardDetailSheet({
                     <StatusPills labels={detail.card.labels} />
                   </div>
                 </LabelPicker>
+
+                {columns.map((column) => (
+                  <Fragment key={column.id}>
+                    <span className="text-muted-foreground">{column.name}</span>
+                    <CustomCell
+                      column={column}
+                      value={detail.props[column.id] ?? null}
+                      onChange={(value) => handlePropChanged(column.id, value)}
+                    />
+                  </Fragment>
+                ))}
               </div>
 
               <div className="flex flex-col gap-1">
@@ -236,7 +271,11 @@ export function CardDetailSheet({
                 <MarkdownEditor value={desc} onChange={handleDescChange} placeholder="Add a description…" />
               </div>
 
-              <CardAttachments cardId={detail.card.id} attachments={detail.attachments} />
+              <CardAttachments
+                cardId={detail.card.id}
+                attachments={detail.attachments}
+                onDeleted={handleAttachmentDeleted}
+              />
 
               <Separator />
 

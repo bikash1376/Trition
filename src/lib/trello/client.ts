@@ -3,6 +3,7 @@ import { cached } from "./cache";
 import type {
   TrelloAttachment,
   TrelloBoard,
+  TrelloBoardAction,
   TrelloBoardMembership,
   TrelloCard,
   TrelloCommentAction,
@@ -69,9 +70,27 @@ export function getMyBoards(token: string) {
 }
 
 export function getBoard(boardId: string, token: string) {
-  return trelloFetch<TrelloBoard>(`/boards/${boardId}`, token, {
-    fields: "name,url,closed",
-  });
+  return cached(`board:${boardId}`, TTL, () =>
+    trelloFetch<TrelloBoard>(`/boards/${boardId}`, token, {
+      fields: "name,url,closed,desc,prefs",
+    }),
+  );
+}
+
+export function updateBoard(boardId: string, params: Record<string, string>, token: string) {
+  return trelloFetch<TrelloBoard>(`/boards/${boardId}`, token, params, "PUT");
+}
+
+export function getBoardActions(boardId: string, token: string) {
+  return cached(`board-actions:${boardId}`, 15_000, () =>
+    trelloFetch<TrelloBoardAction[]>(`/boards/${boardId}/actions`, token, {
+      filter: "createCard,updateCard,deleteCard,commentCard,createList,updateList,copyCard",
+      limit: "20",
+      fields: "type,date,data",
+      member_fields: "none",
+      memberCreator_fields: "fullName,username,avatarUrl",
+    }),
+  );
 }
 
 export function createBoard(
@@ -250,12 +269,14 @@ export function getCardCreator(cardId: string, token: string): Promise<TrelloMem
   });
 }
 
-export async function getCardLastEditor(cardId: string, token: string): Promise<TrelloMember | null> {
-  const actions = await trelloFetch<CreatorAction[]>(`/cards/${cardId}/actions`, token, {
-    limit: "1",
-    memberCreator_fields: "fullName,username,avatarUrl",
+export function getCardLastEditor(cardId: string, token: string): Promise<TrelloMember | null> {
+  return cached(`card-last-editor:${cardId}`, TTL, async () => {
+    const actions = await trelloFetch<CreatorAction[]>(`/cards/${cardId}/actions`, token, {
+      limit: "1",
+      memberCreator_fields: "fullName,username,avatarUrl",
+    });
+    return actions[0]?.memberCreator ?? null;
   });
-  return actions[0]?.memberCreator ?? null;
 }
 
 export function updateListName(listId: string, name: string, token: string) {

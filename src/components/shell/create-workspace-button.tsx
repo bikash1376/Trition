@@ -83,7 +83,7 @@ export function CreateWorkspaceButton() {
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={create} disabled={creating || !name.trim()}>
+          <Button variant="secondary" onClick={create} disabled={creating || !name.trim()}>
             Create
           </Button>
         </DialogFooter>

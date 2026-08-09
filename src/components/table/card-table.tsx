@@ -30,6 +30,7 @@ const URL_RE = /^https?:\/\/\S+$/;
 export interface CardRow {
   card: TrelloCard;
   creator: TrelloMember | null;
+  lastEditor?: TrelloMember | null;
   props?: CardProps;
 }
 
@@ -46,7 +47,7 @@ interface CardTableProps {
   headerActions?: React.ReactNode;
 }
 
-type SortKey = "name" | "status" | "members" | "createdBy";
+type SortKey = "name" | "status" | "members" | "createdBy" | "lastEditedBy";
 type SortDir = "asc" | "desc";
 
 const COLUMNS: { key: SortKey; label: string; width?: string }[] = [
@@ -54,6 +55,7 @@ const COLUMNS: { key: SortKey; label: string; width?: string }[] = [
   { key: "status", label: "Status", width: "w-48" },
   { key: "members", label: "Members" },
   { key: "createdBy", label: "Created By" },
+  { key: "lastEditedBy", label: "Last Edited By" },
 ];
 
 export function CardTable({
@@ -106,6 +108,8 @@ export function CardTable({
               return cardMembers(r.card)[0]?.fullName.toLowerCase() ?? "";
             case "createdBy":
               return r.creator?.fullName.toLowerCase() ?? "";
+            case "lastEditedBy":
+              return r.lastEditor?.fullName.toLowerCase() ?? "";
           }
         };
         return valueOf(a) < valueOf(b) ? -dir : valueOf(a) > valueOf(b) ? dir : 0;
@@ -254,8 +258,8 @@ export function CardTable({
   }
 
   return (
-    <div className={compact ? "flex flex-col" : "flex h-full flex-col px-8 py-8"}>
-      <div className={`group mb-4 flex items-center ${showTitle ? "justify-between" : "justify-end"}`}>
+    <div className={compact ? "flex flex-col" : "flex h-full flex-col px-4 py-6 sm:px-8 sm:py-8"}>
+      <div className={`group mb-4 flex flex-wrap items-center gap-2 ${showTitle ? "justify-between" : "justify-end"}`}>
         {showTitle && (
           <EditableTitle
             listId={listId}
@@ -353,7 +357,7 @@ export function CardTable({
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map(({ card, creator, props }) => {
+            {visibleRows.map(({ card, creator, lastEditor, props }) => {
               const isLinkCard = URL_RE.test(card.name.trim());
               return (
                 <tr
@@ -368,7 +372,7 @@ export function CardTable({
                         e.stopPropagation();
                         setDeleteConfirmId(card.id);
                       }}
-                      className="opacity-0 transition-opacity group-hover:opacity-100"
+                      className="opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
                     >
                       <HugeiconsIcon icon={Delete02Icon} size={14} className="text-muted-foreground hover:text-destructive" />
                     </button>
@@ -418,6 +422,16 @@ export function CardTable({
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
+                  <td className="px-3 py-2">
+                    {lastEditor ? (
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <MemberAvatar member={lastEditor} className="h-5 w-5" />
+                        {lastEditor.fullName.split(" ")[0]}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
                   {columns.map((col) => (
                     <td key={col.id} className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <CustomCell
@@ -444,7 +458,7 @@ export function CardTable({
             className="h-7 border-none px-0 shadow-none focus-visible:ring-0"
           />
           {newCardName.trim().length > 0 && (
-            <Button size="sm" onClick={addCard}>
+            <Button variant="secondary" size="sm" onClick={addCard}>
               Add
             </Button>
           )}

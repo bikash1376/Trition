@@ -10,7 +10,13 @@ export interface TrelloBoard {
   name: string;
   url: string;
   closed: boolean;
-  prefs?: { permissionLevel: "private" | "org" | "public" };
+  desc?: string;
+  prefs?: {
+    permissionLevel: "private" | "org" | "public";
+    comments?: "disabled" | "members" | "org" | "public";
+    cardCovers?: boolean;
+    selfJoin?: boolean;
+  };
 }
 
 export interface TrelloList {
@@ -59,4 +65,16 @@ export interface TrelloCommentAction {
   date: string;
   data: { text: string };
   memberCreator: TrelloMember;
+}
+
+export interface TrelloBoardAction {
+  id: string;
+  type: string;
+  date: string;
+  memberCreator: TrelloMember;
+  data: {
+    card?: { id: string; name: string };
+    list?: { id: string; name: string };
+    board?: { id: string; name: string };
+  };
 }

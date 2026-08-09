@@ -46,7 +46,7 @@ export function ColumnHeaderMenu({ column, onRenamed, onOptionsChanged, onDelete
       <Popover>
         <PopoverTrigger
           onClick={(e: MouseEvent) => e.stopPropagation()}
-          className="rounded p-0.5 text-muted-foreground opacity-0 hover:bg-accent hover:text-foreground group-hover:opacity-100"
+          className="rounded p-0.5 text-muted-foreground opacity-100 hover:bg-accent hover:text-foreground md:opacity-0 md:group-hover:opacity-100"
         >
           <HugeiconsIcon icon={PencilEdit02Icon} size={12} />
         </PopoverTrigger>

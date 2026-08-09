@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { BookmarkIcon } from "@hugeicons/core-free-icons";
 import { BlockHoverActions } from "@/components/blocks/block-hover-actions";
@@ -12,6 +12,11 @@ interface BookmarkBlockProps {
   title: string;
   onEdited: (cardId: string, url: string, title: string) => void;
   onDeleted: (cardId: string) => void;
+}
+
+interface BookmarkMeta {
+  description: string | null;
+  favicon: string | null;
 }
 
 function hostnameOf(url: string) {
@@ -26,6 +31,20 @@ export function BookmarkBlock({ cardId, url, title, onEdited, onDeleted }: Bookm
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(url);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [meta, setMeta] = useState<BookmarkMeta | null>(null);
+  const [faviconFailed, setFaviconFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/bookmark-meta?url=${encodeURIComponent(url)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setMeta(data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
 
   function save() {
     setEditing(false);
@@ -71,10 +90,25 @@ export function BookmarkBlock({ cardId, url, title, onEdited, onDeleted }: Bookm
         className="flex flex-col gap-1 rounded-md border border-border px-3 py-2.5 pr-16 text-sm hover:bg-accent"
       >
         <span className="flex items-center gap-2 font-medium">
-          <HugeiconsIcon icon={BookmarkIcon} size={14} className="shrink-0 text-muted-foreground" />
+          {meta?.favicon && !faviconFailed ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={meta.favicon}
+              alt=""
+              width={14}
+              height={14}
+              className="shrink-0 rounded-sm"
+              onError={() => setFaviconFailed(true)}
+            />
+          ) : (
+            <HugeiconsIcon icon={BookmarkIcon} size={14} className="shrink-0 text-muted-foreground" />
+          )}
           {title}
         </span>
         <span className="truncate text-xs text-muted-foreground">{hostnameOf(url)}</span>
+        {meta?.description && (
+          <span className="line-clamp-2 text-xs text-muted-foreground">{meta.description}</span>
+        )}
       </a>
       <BlockHoverActions onEdit={() => setEditing(true)} onDelete={() => setConfirmOpen(true)} />
       <ConfirmDeleteDialog

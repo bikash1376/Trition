@@ -13,9 +13,10 @@ interface SidebarPageLinkProps {
   listId: string;
   name: string;
   active: boolean;
+  onDeleted: (listId: string) => void;
 }
 
-export function SidebarPageLink({ href, listId, name, active }: SidebarPageLinkProps) {
+export function SidebarPageLink({ href, listId, name, active, onDeleted }: SidebarPageLinkProps) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -26,10 +27,14 @@ export function SidebarPageLink({ href, listId, name, active }: SidebarPageLinkP
     setConfirmOpen(true);
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     setDeleting(true);
-    await fetch(`/api/lists/${listId}`, { method: "DELETE" });
-    router.refresh();
+    onDeleted(listId);
+    if (active) {
+      const pageHrefBase = href.slice(0, href.indexOf("/l/"));
+      router.push(pageHrefBase || "/home");
+    }
+    fetch(`/api/lists/${listId}`, { method: "DELETE" });
   }
 
   return (
@@ -47,7 +52,7 @@ export function SidebarPageLink({ href, listId, name, active }: SidebarPageLinkP
         type="button"
         onClick={handleDeleteClick}
         disabled={deleting}
-        className="shrink-0 cursor-pointer opacity-0 transition-opacity group-hover:opacity-100"
+        className="shrink-0 cursor-pointer opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
       >
         <HugeiconsIcon icon={Delete02Icon} size={13} className="text-muted-foreground hover:text-destructive" />
       </button>

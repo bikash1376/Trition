@@ -56,7 +56,7 @@ export function InviteButton({ boardId }: { boardId: string }) {
           {status === "error" && <p className="text-xs text-destructive">Couldn&apos;t send that invite.</p>}
         </div>
         <DialogFooter>
-          <Button onClick={invite} disabled={status === "sending" || !email.trim()}>
+          <Button variant="secondary" onClick={invite} disabled={status === "sending" || !email.trim()}>
             Send invite
           </Button>
         </DialogFooter>

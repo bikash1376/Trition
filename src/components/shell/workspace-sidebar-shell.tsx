@@ -13,6 +13,8 @@ import { SidebarPageLink } from "@/components/shell/sidebar-page-link";
 import { NavLinkSpinner } from "@/components/shell/nav-link-spinner";
 import { CreateWorkspaceButton } from "@/components/shell/create-workspace-button";
 import { NewPageButton } from "@/components/shell/new-page-button";
+import { AboutDialog } from "@/components/shell/about-dialog";
+import { SettingsDialog } from "@/components/shell/settings-dialog";
 import type { TrelloBoard, TrelloList, TrelloMember } from "@/lib/trello/types";
 
 interface WorkspaceSidebarShellProps {
@@ -66,7 +68,7 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
   const activeBoardId = context.kind === "board" ? context.boardId : undefined;
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside className="flex h-full w-64 shrink-0 flex-col overflow-hidden rounded-r-[12px] border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="flex items-center px-3 py-4">
         <TextShimmer as="span" className="font-script text-2xl leading-none" duration={2.5}>
           Trition
@@ -146,6 +148,11 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
                     href={`${context.pageHrefBase}/l/${list.id}`}
                     name={list.name}
                     active={list.id === context.activeListId}
+                    onDeleted={(deletedListId) =>
+                      setPagesData((prev) =>
+                        prev ? { ...prev, lists: prev.lists.filter((l) => l.id !== deletedListId) } : prev,
+                      )
+                    }
                   />
                 ))}
               </nav>
@@ -156,6 +163,8 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
 
       <div className="flex items-center justify-between gap-2 px-3 py-4">
         <span className="min-w-0 flex-1 truncate text-sm">{me.fullName || me.username}</span>
+        <SettingsDialog />
+        <AboutDialog />
         <form action="/api/auth/logout" method="post">
           <Button type="submit" variant="ghost" size="icon-sm" title="Log out">
             <HugeiconsIcon icon={Logout03Icon} size={16} />

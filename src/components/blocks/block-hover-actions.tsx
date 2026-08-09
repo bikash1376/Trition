@@ -11,7 +11,7 @@ interface BlockHoverActionsProps {
 
 export function BlockHoverActions({ onEdit, onDelete }: BlockHoverActionsProps) {
   return (
-    <div className="absolute top-1 right-1 flex items-center gap-0.5 rounded-md border border-border bg-popover opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+    <div className="absolute top-1 right-1 flex items-center gap-0.5 rounded-md border border-border bg-popover opacity-100 shadow-sm transition-opacity md:opacity-0 md:group-hover:opacity-100">
       {onEdit && (
         <Tooltip>
           <TooltipTrigger

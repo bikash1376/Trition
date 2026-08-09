@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { getTrelloToken } from "@/lib/trello/session";
-import { getBoardLabels, getBoardMembers, getCardCreator, getList, getListCards, TrelloApiError } from "@/lib/trello/client";
+import {
+  getBoard,
+  getBoardLabels,
+  getBoardMembers,
+  getCardCreator,
+  getCardLastEditor,
+  getList,
+  getListCards,
+  TrelloApiError,
+} from "@/lib/trello/client";
+import { parseWorkspaceSettings } from "@/lib/trello/board-settings";
 import { COLUMNS_SCHEMA_CARD_NAME, parseCardProps, parseColumnSchema } from "@/lib/trello/columns";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ listId: string }> }) {
@@ -15,15 +25,20 @@ export async function GET(_request: Request, { params }: { params: Promise<{ lis
     const cards = allCards.filter((c) => c.name !== COLUMNS_SCHEMA_CARD_NAME);
     const columns = schemaCard ? parseColumnSchema(schemaCard.desc) : [];
 
-    const [members, labels, creators] = await Promise.all([
+    const [members, labels, board, creators] = await Promise.all([
       getBoardMembers(boardId, token),
       getBoardLabels(boardId, token),
+      getBoard(boardId, token),
       Promise.all(cards.map((card) => getCardCreator(card.id, token))),
     ]);
+    const { settings } = parseWorkspaceSettings(board.desc);
+    const lastEditors = settings.showLastEditedColumn
+      ? await Promise.all(cards.map((card) => getCardLastEditor(card.id, token)))
+      : cards.map(() => null);
 
     const rows = cards.map((card, i) => {
       const { props, rest } = parseCardProps(card.desc);
-      return { card: { ...card, desc: rest }, creator: creators[i], props };
+      return { card: { ...card, desc: rest }, creator: creators[i], lastEditor: lastEditors[i], props };
     });
     return NextResponse.json({ rows, members, labels, columns });
   } catch (err) {

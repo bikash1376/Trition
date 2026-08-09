@@ -69,7 +69,7 @@ export function NewPageButton({ boardId, pageHrefBase, trigger, children }: NewP
           />
         </div>
         <DialogFooter>
-          <Button onClick={create} disabled={creating || !name.trim()}>
+          <Button variant="secondary" onClick={create} disabled={creating || !name.trim()}>
             Create page
           </Button>
         </DialogFooter>

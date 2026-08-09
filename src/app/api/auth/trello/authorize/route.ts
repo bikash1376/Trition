@@ -14,7 +14,7 @@ export async function GET() {
     scope: "read,write,account",
     response_type: "token",
     key,
-    name: "DaSpace",
+    name: "Trition",
     return_url: `${appUrl()}/auth/trello/callback`,
   });
 

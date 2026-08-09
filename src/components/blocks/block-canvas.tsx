@@ -14,6 +14,7 @@ import { EditableTitle } from "@/components/shell/editable-title";
 import { InviteButton } from "@/components/shell/invite-button";
 import { WorkspaceMembers } from "@/components/shell/workspace-members";
 import { BoardSettingsSheet, type BoardCover } from "@/components/shell/board-settings-sheet";
+import { LobbyButton } from "@/components/shell/lobby-button";
 import type { ColumnDef } from "@/lib/trello/columns";
 
 interface BlockCanvasProps {
@@ -99,15 +100,16 @@ export function BlockCanvas({
           />
         </div>
       )}
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-1 px-10 py-12">
-        <div className="mb-6 flex w-full max-w-3xl items-center justify-between">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-1 px-4 py-8 sm:px-10 sm:py-12">
+        <div className="mb-6 flex w-full max-w-3xl flex-wrap items-center justify-between gap-3">
           {titleEditable ? (
             <EditableTitle listId={listId} initialName={pageTitle} className="text-3xl font-bold" />
           ) : (
             <h1 className="text-3xl font-bold">{pageTitle}</h1>
           )}
           {inviteBoardId && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <LobbyButton boardId={inviteBoardId} />
               {workspaceMemberships && <WorkspaceMembers memberships={workspaceMemberships} />}
               <InviteButton boardId={inviteBoardId} />
               <BoardSettingsSheet

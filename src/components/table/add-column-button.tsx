@@ -57,7 +57,7 @@ export function AddColumnButton({ onAdd }: { onAdd: (name: string, type: ColumnT
             </button>
           ))}
         </div>
-        <Button size="sm" className="mt-2 w-full" onClick={submit} disabled={!name.trim()}>
+        <Button variant="secondary" size="sm" className="mt-2 w-full" onClick={submit} disabled={!name.trim()}>
           Add column
         </Button>
       </PopoverContent>

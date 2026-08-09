@@ -4,6 +4,7 @@ import {
   getBoardLists,
   getBoardMembers,
   getCardCreator,
+  getCardLastEditor,
   getListCards,
   getMe,
   getMyBoards,
@@ -39,15 +40,17 @@ export default async function HomeListPage({ params }: { params: Promise<{ listI
 
   let members: TrelloMember[] = [];
   let labels: TrelloLabel[] = [];
-  let tableRows: { card: (typeof cards)[number]; creator: TrelloMember | null; props: CardProps }[] = [];
+  let tableRows: { card: (typeof cards)[number]; creator: TrelloMember | null; lastEditor: TrelloMember | null; props: CardProps }[] =
+    [];
   if (tableCards.length > 0) {
     [members, labels] = await withAuthGuard(
       Promise.all([getBoardMembers(personalBoard.id, token), getBoardLabels(personalBoard.id, token)]),
     );
     const creators = await withAuthGuard(Promise.all(tableCards.map((card) => getCardCreator(card.id, token))));
+    const lastEditors = await withAuthGuard(Promise.all(tableCards.map((card) => getCardLastEditor(card.id, token))));
     tableRows = tableCards.map((card, i) => {
       const { props, rest } = parseCardProps(card.desc);
-      return { card: { ...card, desc: rest }, creator: creators[i], props };
+      return { card: { ...card, desc: rest }, creator: creators[i], lastEditor: lastEditors[i], props };
     });
   }
 

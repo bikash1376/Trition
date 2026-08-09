@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type TransitionEvent } from "react";
+import { useEffect, useState, type TransitionEvent } from "react";
 import { GoogleMark, TrelloMark } from "@/components/icons";
 
 type Phase = "video-big" | "video-shrink" | "video-up" | "done";
@@ -8,6 +8,20 @@ type Phase = "video-big" | "video-shrink" | "video-up" | "done";
 export function LoginHero() {
   const [phase, setPhase] = useState<Phase>("video-big");
   const isDone = phase === "done";
+
+  // Login always plays the video intro against the dark theme, regardless of the
+  // signed-in appearance preference — restore whatever was active on unmount.
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains("dark");
+    const hadExp = root.classList.contains("theme-exp");
+    root.classList.add("dark");
+    root.classList.remove("theme-exp");
+    return () => {
+      root.classList.toggle("dark", hadDark);
+      root.classList.toggle("theme-exp", hadExp);
+    };
+  }, []);
 
   function handleWrapperTransitionEnd(e: TransitionEvent<HTMLDivElement>) {
     if (phase === "video-shrink" && e.propertyName === "height") {

@@ -52,7 +52,7 @@ export function TableBlock({ cardId, listId, name, me, onDeleted }: TableBlockPr
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}
-            className="rounded p-1 text-muted-foreground opacity-0 hover:bg-accent hover:text-destructive group-hover:opacity-100"
+            className="rounded p-1 text-muted-foreground opacity-100 hover:bg-accent hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
           />
         }
       >

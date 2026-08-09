@@ -16,7 +16,24 @@ export interface BoardCover {
   heightPercent: number;
 }
 
+interface WorkspaceSettings {
+  showLastEditedColumn: boolean;
+}
+
+interface BoardPrefs {
+  permissionLevel: "private" | "org" | "public";
+  comments: "disabled" | "members" | "org" | "public";
+  cardCovers: boolean;
+  selfJoin: boolean;
+}
+
 const COVER_HEIGHTS = [25, 40, 50] as const;
+const COMMENT_OPTIONS: { value: BoardPrefs["comments"]; label: string }[] = [
+  { value: "disabled", label: "Off" },
+  { value: "members", label: "Members" },
+  { value: "org", label: "Workspace" },
+  { value: "public", label: "Anyone" },
+];
 
 interface BoardSettingsSheetProps {
   boardId: string;
@@ -32,6 +49,8 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
   const [uploadingCover, setUploadingCover] = useState(false);
   const [removeCoverConfirmOpen, setRemoveCoverConfirmOpen] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
+  const [prefs, setPrefs] = useState<BoardPrefs | null>(null);
 
   useEffect(() => {
     if (!open || labels !== null) return;
@@ -39,6 +58,64 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
       .then((res) => res.json())
       .then((data) => setLabels(data.labels));
   }, [open, boardId, labels]);
+
+  useEffect(() => {
+    if (!open || settings !== null) return;
+    fetch(`/api/boards/${boardId}/settings`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setSettings(data.settings);
+        setPrefs(data.prefs);
+      });
+  }, [open, boardId, settings]);
+
+  function patchSettings(body: Record<string, unknown>) {
+    fetch(`/api/boards/${boardId}/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setSettings(data.settings);
+        setPrefs(data.prefs);
+      });
+  }
+
+  function toggleLastEditedColumn() {
+    if (!settings) return;
+    const next = { showLastEditedColumn: !settings.showLastEditedColumn };
+    setSettings(next);
+    patchSettings(next);
+  }
+
+  function setPermissionLevel(permissionLevel: BoardPrefs["permissionLevel"]) {
+    if (!prefs) return;
+    setPrefs({ ...prefs, permissionLevel });
+    patchSettings({ permissionLevel });
+  }
+
+  function setComments(comments: BoardPrefs["comments"]) {
+    if (!prefs) return;
+    setPrefs({ ...prefs, comments });
+    patchSettings({ comments });
+  }
+
+  function toggleCardCovers() {
+    if (!prefs) return;
+    const cardCovers = !prefs.cardCovers;
+    setPrefs({ ...prefs, cardCovers });
+    patchSettings({ cardCovers });
+  }
+
+  function toggleSelfJoin() {
+    if (!prefs) return;
+    const selfJoin = !prefs.selfJoin;
+    setPrefs({ ...prefs, selfJoin });
+    patchSettings({ selfJoin });
+  }
 
   async function addLabel() {
     setCreating(true);
@@ -103,7 +180,7 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
       >
         <HugeiconsIcon icon={Settings02Icon} size={16} />
       </button>
-      <SheetContent side="right" className="w-full sm:max-w-sm">
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-sm">
         <SheetHeader>
           <SheetTitle>Board Settings</SheetTitle>
         </SheetHeader>
@@ -182,7 +259,82 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
             ))}
             {labels?.length === 0 && <p className="text-sm text-muted-foreground">No labels yet.</p>}
           </div>
+
           <Separator />
+
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            General (compatible with Trello)
+          </p>
+          {!prefs ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm">Visibility</span>
+                <div className="flex gap-1">
+                  <Button
+                    variant={prefs.permissionLevel === "private" ? "secondary" : "outline"}
+                    size="xs"
+                    onClick={() => setPermissionLevel("private")}
+                  >
+                    Private
+                  </Button>
+                  <Button
+                    variant={prefs.permissionLevel === "public" ? "secondary" : "outline"}
+                    size="xs"
+                    onClick={() => setPermissionLevel("public")}
+                  >
+                    Public
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm">Who can comment</span>
+                <div className="flex flex-wrap justify-end gap-1">
+                  {COMMENT_OPTIONS.map((opt) => (
+                    <Button
+                      key={opt.value}
+                      variant={prefs.comments === opt.value ? "secondary" : "outline"}
+                      size="xs"
+                      onClick={() => setComments(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm">Card covers</span>
+                <Button variant={prefs.cardCovers ? "secondary" : "outline"} size="xs" onClick={toggleCardCovers}>
+                  {prefs.cardCovers ? "On" : "Off"}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm">Anyone in workspace can join</span>
+                <Button variant={prefs.selfJoin ? "secondary" : "outline"} size="xs" onClick={toggleSelfJoin}>
+                  {prefs.selfJoin ? "On" : "Off"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">App settings (Trition)</p>
+          {!settings ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm">Show &quot;Last Edited By&quot; column in tables</span>
+              <Button
+                variant={settings.showLastEditedColumn ? "secondary" : "outline"}
+                size="xs"
+                onClick={toggleLastEditedColumn}
+              >
+                {settings.showLastEditedColumn ? "On" : "Off"}
+              </Button>
+            </div>
+          )}
           <p className="text-xs text-muted-foreground">More board settings will show up here over time.</p>
         </div>
       </SheetContent>
