@@ -41,7 +41,7 @@ export function LoginHero() {
           : "h-96 w-96 -translate-y-40"; // done: no transition/duration classes — instant, silent, fixed
 
   return (
-    <div className="flex h-screen flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-4 py-10">
+    <div className="flex h-screen flex-1 flex-col items-center justify-center gap-4 overflow-hidden bg-[#181818] px-4 py-10">
       <div onTransitionEnd={handleWrapperTransitionEnd} className={`flex items-center justify-center ${wrapperClass}`}>
         {!isDone ? (
           <video
@@ -55,7 +55,7 @@ export function LoginHero() {
         ) : (
           <h1
             className="font-script self-end text-[63px] leading-none whitespace-nowrap"
-            style={{ color: "#ffffff", WebkitTextStroke: "1.0px #ffffff" }}
+            style={{ color: "#ffffff" }}
           >
             Trition
           </h1>
