@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CardDetailSheet } from "@/components/table/card-detail-sheet";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { LabelPicker } from "@/components/table/label-picker";
 import { MemberPicker } from "@/components/table/member-picker";
 import { StatusPills } from "@/components/table/status-pills";
@@ -34,6 +35,7 @@ interface CardTableProps {
   labels: TrelloLabel[];
   me: TrelloMember;
   compact?: boolean;
+  showTitle?: boolean;
   headerActions?: React.ReactNode;
 }
 
@@ -55,6 +57,7 @@ export function CardTable({
   labels,
   me,
   compact,
+  showTitle = true,
   headerActions,
 }: CardTableProps) {
   const [rows, setRows] = useState(initialRows);
@@ -63,6 +66,7 @@ export function CardTable({
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [filterMemberIds, setFilterMemberIds] = useState<Set<string>>(new Set());
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
@@ -196,60 +200,64 @@ export function CardTable({
 
   return (
     <div className={compact ? "flex flex-col" : "flex h-full flex-col px-8 py-8"}>
-      <div className="group mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className={`group mb-4 flex items-center ${showTitle ? "justify-between" : "justify-end"}`}>
+        {showTitle && (
           <EditableTitle
             listId={listId}
             initialName={pageTitle}
             className={compact ? "text-lg font-semibold" : "text-2xl font-bold"}
           />
+        )}
+        <div className="flex items-center gap-1.5">
+          {rows.length > 0 && (
+            <Popover>
+              <PopoverTrigger
+                render={<Button variant="outline" size="sm" className="gap-1.5" />}
+              >
+                <HugeiconsIcon icon={FilterIcon} size={14} />
+                Filter
+                {(filterLabelIds.size > 0 || filterMemberIds.size > 0) && (
+                  <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
+                    {filterLabelIds.size + filterMemberIds.size}
+                  </span>
+                )}
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64 p-2">
+                <p className="px-1 pb-1 text-xs font-medium text-muted-foreground">Status</p>
+                <div className="mb-2 flex flex-col gap-0.5">
+                  {labels
+                    .filter((l) => l.name.trim().length > 0)
+                    .map((label) => (
+                      <button
+                        key={label.id}
+                        type="button"
+                        onClick={() => toggleFilterLabel(label.id)}
+                        className="flex items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent"
+                      >
+                        <input type="checkbox" readOnly checked={filterLabelIds.has(label.id)} className="pointer-events-none" />
+                        {label.name}
+                      </button>
+                    ))}
+                </div>
+                <p className="px-1 pb-1 text-xs font-medium text-muted-foreground">Members</p>
+                <div className="flex flex-col gap-0.5">
+                  {members.map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      onClick={() => toggleFilterMember(member.id)}
+                      className="flex items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent"
+                    >
+                      <input type="checkbox" readOnly checked={filterMemberIds.has(member.id)} className="pointer-events-none" />
+                      {member.fullName}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
           {headerActions}
         </div>
-        <Popover>
-          <PopoverTrigger
-            render={<Button variant="outline" size="sm" className="gap-1.5" />}
-          >
-            <HugeiconsIcon icon={FilterIcon} size={14} />
-            Filter
-            {(filterLabelIds.size > 0 || filterMemberIds.size > 0) && (
-              <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
-                {filterLabelIds.size + filterMemberIds.size}
-              </span>
-            )}
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-64 p-2">
-            <p className="px-1 pb-1 text-xs font-medium text-muted-foreground">Status</p>
-            <div className="mb-2 flex flex-col gap-0.5">
-              {labels
-                .filter((l) => l.name.trim().length > 0)
-                .map((label) => (
-                  <button
-                    key={label.id}
-                    type="button"
-                    onClick={() => toggleFilterLabel(label.id)}
-                    className="flex items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent"
-                  >
-                    <input type="checkbox" readOnly checked={filterLabelIds.has(label.id)} className="pointer-events-none" />
-                    {label.name}
-                  </button>
-                ))}
-            </div>
-            <p className="px-1 pb-1 text-xs font-medium text-muted-foreground">Members</p>
-            <div className="flex flex-col gap-0.5">
-              {members.map((member) => (
-                <button
-                  key={member.id}
-                  type="button"
-                  onClick={() => toggleFilterMember(member.id)}
-                  className="flex items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent"
-                >
-                  <input type="checkbox" readOnly checked={filterMemberIds.has(member.id)} className="pointer-events-none" />
-                  {member.fullName}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
       </div>
 
       <div className="overflow-x-auto rounded-md border border-border">
@@ -287,7 +295,7 @@ export function CardTable({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        deleteCard(card.id);
+                        setDeleteConfirmId(card.id);
                       }}
                       className="opacity-0 transition-opacity group-hover:opacity-100"
                     >
@@ -363,6 +371,15 @@ export function CardTable({
         onRenamed={handleRenamed}
         onArchived={handleArchived}
         onMembersChanged={handleMembersChanged}
+      />
+
+      <ConfirmDeleteDialog
+        open={deleteConfirmId !== null}
+        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+        description="This card will be permanently deleted."
+        onConfirm={() => {
+          if (deleteConfirmId) deleteCard(deleteConfirmId);
+        }}
       />
     </div>
   );

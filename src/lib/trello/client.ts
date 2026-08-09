@@ -170,6 +170,10 @@ export async function uploadCardAttachment(cardId: string, file: File, token: st
   return res.json() as Promise<TrelloAttachment>;
 }
 
+export function deleteCardAttachment(cardId: string, attachmentId: string, token: string) {
+  return trelloFetch<void>(`/cards/${cardId}/attachments/${attachmentId}`, token, {}, "DELETE");
+}
+
 export function getBoardLabels(boardId: string, token: string) {
   return cached(`board-labels:${boardId}:${token}`, TTL, () =>
     trelloFetch<TrelloLabel[]>(`/boards/${boardId}/labels`, token, {

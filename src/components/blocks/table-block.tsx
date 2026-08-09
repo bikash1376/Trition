@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete02Icon } from "@hugeicons/core-free-icons";
 import { CardTable } from "@/components/table/card-table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import type { TrelloCard, TrelloLabel, TrelloMember } from "@/lib/trello/types";
 
 interface TableData {
@@ -23,6 +24,7 @@ interface TableBlockProps {
 
 export function TableBlock({ cardId, listId, name, me, onDeleted }: TableBlockProps) {
   const [data, setData] = useState<TableData | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +49,7 @@ export function TableBlock({ cardId, listId, name, me, onDeleted }: TableBlockPr
         render={
           <button
             type="button"
-            onClick={remove}
+            onClick={() => setConfirmOpen(true)}
             className="rounded p-1 text-muted-foreground opacity-0 hover:bg-accent hover:text-destructive group-hover:opacity-100"
           />
         }
@@ -61,7 +63,10 @@ export function TableBlock({ cardId, listId, name, me, onDeleted }: TableBlockPr
   return (
     <div className="rounded-md border border-border p-3">
       {!data ? (
-        <p className="text-sm text-muted-foreground">Loading table…</p>
+        <div className="flex flex-col gap-2 p-1">
+          <div className="h-5 w-32 animate-pulse rounded bg-muted" />
+          <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
+        </div>
       ) : (
         <CardTable
           listId={listId}
@@ -74,6 +79,14 @@ export function TableBlock({ cardId, listId, name, me, onDeleted }: TableBlockPr
           headerActions={deleteAction}
         />
       )}
+      <ConfirmDeleteDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Delete table "${name}"?`}
+        description="This table and all its cards will be permanently deleted."
+        confirmLabel="Delete table"
+        onConfirm={remove}
+      />
     </div>
   );
 }

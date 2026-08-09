@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import { parseBlock, serializeBlock } from "@/lib/trello/blocks";
-import type { TrelloBoardMembership, TrelloCard, TrelloList, TrelloMember } from "@/lib/trello/types";
+import type { TrelloBoardMembership, TrelloCard, TrelloLabel, TrelloList, TrelloMember } from "@/lib/trello/types";
 import { BlockComposer } from "@/components/blocks/block-composer";
 import { BookmarkBlock } from "@/components/blocks/bookmark-block";
 import { ImageBlock } from "@/components/blocks/image-block";
 import { PageBlock } from "@/components/blocks/page-block";
 import { TableBlock } from "@/components/blocks/table-block";
 import { TextBlock } from "@/components/blocks/text-block";
+import { CardTable } from "@/components/table/card-table";
 import { EditableTitle } from "@/components/shell/editable-title";
 import { InviteButton } from "@/components/shell/invite-button";
 import { WorkspaceMembers } from "@/components/shell/workspace-members";
-import { BoardSettingsSheet } from "@/components/shell/board-settings-sheet";
+import { BoardSettingsSheet, type BoardCover } from "@/components/shell/board-settings-sheet";
 
 interface BlockCanvasProps {
   boardId: string;
@@ -25,6 +26,10 @@ interface BlockCanvasProps {
   titleEditable?: boolean;
   inviteBoardId?: string;
   workspaceMemberships?: TrelloBoardMembership[];
+  tableRows?: { card: TrelloCard; creator: TrelloMember | null }[];
+  tableMembers?: TrelloMember[];
+  tableLabels?: TrelloLabel[];
+  cover?: BoardCover | null;
 }
 
 export function BlockCanvas({
@@ -38,13 +43,27 @@ export function BlockCanvas({
   titleEditable,
   inviteBoardId,
   workspaceMemberships,
+  tableRows,
+  tableMembers,
+  tableLabels,
+  cover: initialCover,
 }: BlockCanvasProps) {
   const [cards, setCards] = useState(initialCards);
   const [pageNames, setPageNames] = useState(initialPageNames);
+  const [pending, setPending] = useState<{ id: string; kind: "table" | "bookmark" }[]>([]);
+  const [cover, setCover] = useState<BoardCover | null>(initialCover ?? null);
 
   function handleCreated(card: TrelloCard, list?: TrelloList) {
     setCards((prev) => [...prev, card]);
     if (list) setPageNames((prev) => ({ ...prev, [list.id]: list.name }));
+  }
+
+  function handlePending(tempId: string, kind: "table" | "bookmark") {
+    setPending((prev) => [...prev, { id: tempId, kind }]);
+  }
+
+  function handlePendingResolved(tempId: string) {
+    setPending((prev) => prev.filter((p) => p.id !== tempId));
   }
 
   function handleReconciled(tempId: string, card: TrelloCard | null) {
@@ -67,6 +86,16 @@ export function BlockCanvas({
 
   return (
     <div className="mx-auto flex h-full max-w-3xl flex-col gap-1 overflow-y-auto px-10 py-12">
+      {cover && (
+        <div className="relative -mx-10 -mt-12 mb-6 h-40 overflow-hidden sm:h-56">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/attachments/${cover.cardId}/${cover.attachmentId}`}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        </div>
+      )}
       <div className="mb-6 flex items-center justify-between">
         {titleEditable ? (
           <EditableTitle listId={listId} initialName={pageTitle} className="text-3xl font-bold" />
@@ -77,10 +106,25 @@ export function BlockCanvas({
           <div className="flex items-center gap-2">
             {workspaceMemberships && <WorkspaceMembers memberships={workspaceMemberships} />}
             <InviteButton boardId={inviteBoardId} />
-            <BoardSettingsSheet boardId={inviteBoardId} />
+            <BoardSettingsSheet boardId={inviteBoardId} homeListId={listId} cover={cover} onCoverChanged={setCover} />
           </div>
         )}
       </div>
+
+      {tableRows && tableRows.length > 0 && me && (
+        <div className="mb-4">
+          <CardTable
+            listId={listId}
+            pageTitle={pageTitle}
+            rows={tableRows}
+            members={tableMembers ?? []}
+            labels={tableLabels ?? []}
+            me={me}
+            compact
+            showTitle={false}
+          />
+        </div>
+      )}
 
       {cards.map((card) => {
         const block = parseBlock(card.desc);
@@ -137,12 +181,25 @@ export function BlockCanvas({
         );
       })}
 
+      {pending.map((p) =>
+        p.kind === "table" ? (
+          <div key={p.id} className="flex flex-col gap-2 rounded-md border border-border p-3">
+            <div className="h-5 w-32 animate-pulse rounded bg-muted" />
+            <div className="h-24 w-full animate-pulse rounded-md bg-muted" />
+          </div>
+        ) : (
+          <div key={p.id} className="h-14 w-full max-w-md animate-pulse rounded-md border border-border bg-muted/40" />
+        ),
+      )}
+
       <BlockComposer
         boardId={boardId}
         listId={listId}
         pages={Object.entries(pageNames).map(([id, name]) => ({ id, name }))}
         onCreated={handleCreated}
         onReconciled={handleReconciled}
+        onPending={handlePending}
+        onPendingResolved={handlePendingResolved}
       />
     </div>
   );

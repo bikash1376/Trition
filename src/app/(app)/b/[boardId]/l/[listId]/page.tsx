@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getBoardLabels, getBoardLists, getBoardMembers, getCardCreator, getListCards, getMe } from "@/lib/trello/client";
 import { requireToken, withAuthGuard } from "@/lib/trello/guard";
-import { HOME_LIST_NAME, isCanvasList } from "@/lib/trello/blocks";
-import { CardTable } from "@/components/table/card-table";
+import { HOME_LIST_NAME, isBlockCard } from "@/lib/trello/blocks";
 import { BlockCanvas } from "@/components/blocks/block-canvas";
+import type { TrelloLabel, TrelloMember } from "@/lib/trello/types";
 
 export default async function ListPage({
   params,
@@ -20,28 +20,36 @@ export default async function ListPage({
   const activeList = lists.find((list) => list.id === listId);
   if (!activeList || activeList.name === HOME_LIST_NAME) redirect(`/b/${boardId}`);
 
-  if (isCanvasList(cards.map((card) => card.desc))) {
-    const pages = lists.filter((list) => list.name !== HOME_LIST_NAME);
-    const pageNames = Object.fromEntries(pages.map((list) => [list.id, list.name]));
-    return (
-      <BlockCanvas
-        boardId={boardId}
-        listId={listId}
-        pageHrefBase={`/b/${boardId}`}
-        pageTitle={activeList.name}
-        cards={cards}
-        pageNames={pageNames}
-        me={me}
-        titleEditable
-      />
+  const pages = lists.filter((list) => list.name !== HOME_LIST_NAME);
+  const pageNames = Object.fromEntries(pages.map((list) => [list.id, list.name]));
+
+  const tableCards = cards.filter((card) => !isBlockCard(card.desc));
+  const blockCards = cards.filter((card) => isBlockCard(card.desc));
+
+  let members: TrelloMember[] = [];
+  let labels: TrelloLabel[] = [];
+  let tableRows: { card: (typeof cards)[number]; creator: TrelloMember | null }[] = [];
+  if (tableCards.length > 0) {
+    [members, labels] = await withAuthGuard(
+      Promise.all([getBoardMembers(boardId, token), getBoardLabels(boardId, token)]),
     );
+    const creators = await withAuthGuard(Promise.all(tableCards.map((card) => getCardCreator(card.id, token))));
+    tableRows = tableCards.map((card, i) => ({ card, creator: creators[i] }));
   }
 
-  const [members, labels] = await withAuthGuard(
-    Promise.all([getBoardMembers(boardId, token), getBoardLabels(boardId, token)]),
+  return (
+    <BlockCanvas
+      boardId={boardId}
+      listId={listId}
+      pageHrefBase={`/b/${boardId}`}
+      pageTitle={activeList.name}
+      cards={blockCards}
+      pageNames={pageNames}
+      me={me}
+      titleEditable
+      tableRows={tableRows}
+      tableMembers={members}
+      tableLabels={labels}
+    />
   );
-  const creators = await withAuthGuard(Promise.all(cards.map((card) => getCardCreator(card.id, token))));
-  const rows = cards.map((card, i) => ({ card, creator: creators[i] }));
-
-  return <CardTable listId={listId} pageTitle={activeList.name} rows={rows} members={members} labels={labels} me={me} />;
 }

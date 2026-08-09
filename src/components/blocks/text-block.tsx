@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { BlockHoverActions } from "@/components/blocks/block-hover-actions";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { useDebouncedCallback } from "@/lib/use-debounced-callback";
 
 const SAVE_DEBOUNCE_MS = 10_000;
@@ -15,6 +16,7 @@ interface TextBlockProps {
 
 export function TextBlock({ cardId, initialContent, onDeleted }: TextBlockProps) {
   const [value, setValue] = useState(initialContent);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function save(content: string) {
     await fetch(`/api/blocks/${cardId}`, {
@@ -50,7 +52,13 @@ export function TextBlock({ cardId, initialContent, onDeleted }: TextBlockProps)
         onBlur={handleBlur}
         placeholder="Empty text block"
       />
-      <BlockHoverActions onDelete={remove} />
+      <BlockHoverActions onDelete={() => setConfirmOpen(true)} />
+      <ConfirmDeleteDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        description="This text block will be permanently deleted."
+        onConfirm={remove}
+      />
     </div>
   );
 }

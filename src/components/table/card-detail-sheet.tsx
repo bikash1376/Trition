@@ -14,6 +14,7 @@ import { LabelPicker } from "@/components/table/label-picker";
 import { MemberPicker } from "@/components/table/member-picker";
 import { StatusPills } from "@/components/table/status-pills";
 import { MarkdownEditor } from "@/components/markdown-editor";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { readLocalCache, writeLocalCache } from "@/lib/local-cache";
 import { useDebouncedCallback } from "@/lib/use-debounced-callback";
 import type { TrelloAttachment, TrelloCard, TrelloCommentAction, TrelloLabel, TrelloMember } from "@/lib/trello/types";
@@ -55,6 +56,7 @@ export function CardDetailSheet({
   const [desc, setDesc] = useState("");
   const [descStatus, setDescStatus] = useState<"idle" | "pending" | "saved">("idle");
   const [commentText, setCommentText] = useState("");
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!cardId) return;
@@ -275,7 +277,7 @@ export function CardDetailSheet({
 
               <button
                 type="button"
-                onClick={archive}
+                onClick={() => setArchiveConfirmOpen(true)}
                 className="self-start text-sm text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
               >
                 Archive card
@@ -286,6 +288,14 @@ export function CardDetailSheet({
           <div className="p-4 text-sm text-muted-foreground">Loading…</div>
         )}
       </SheetContent>
+      <ConfirmDeleteDialog
+        open={archiveConfirmOpen}
+        onOpenChange={setArchiveConfirmOpen}
+        title="Archive this card?"
+        description="It will be removed from the table and archived in Trello."
+        confirmLabel="Archive"
+        onConfirm={archive}
+      />
     </Sheet>
   );
 }

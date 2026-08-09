@@ -5,6 +5,7 @@ import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { File01Icon } from "@hugeicons/core-free-icons";
 import { BlockHoverActions } from "@/components/blocks/block-hover-actions";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 
 interface PageBlockProps {
   cardId: string;
@@ -18,6 +19,7 @@ interface PageBlockProps {
 export function PageBlock({ cardId, listId, href, name, onRenamed, onDeleted }: PageBlockProps) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   function save() {
     setEditing(false);
@@ -61,7 +63,14 @@ export function PageBlock({ cardId, listId, href, name, onRenamed, onDeleted }: 
         <HugeiconsIcon icon={File01Icon} size={16} className="text-muted-foreground" />
         {name}
       </Link>
-      <BlockHoverActions onEdit={() => setEditing(true)} onDelete={remove} />
+      <BlockHoverActions onEdit={() => setEditing(true)} onDelete={() => setConfirmOpen(true)} />
+      <ConfirmDeleteDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Remove "${name}"?`}
+        description="This removes the page link from here. The page's own content stays in Trello, just unlinked."
+        onConfirm={remove}
+      />
     </div>
   );
 }

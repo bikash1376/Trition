@@ -14,14 +14,20 @@ export async function GET(
   const attachment = attachments.find((a) => a.id === attachmentId);
   if (!attachment) return new Response("not found", { status: 404 });
 
-  const separator = attachment.url.includes("?") ? "&" : "?";
-  const authedUrl = `${attachment.url}${separator}key=${trelloApiKey()}&token=${token}`;
+  // Trello's query-param key/token auth (?key=&token=) is rejected on the
+  // attachment download route — auth has to go via the OAuth header instead.
+  const authHeader = {
+    Authorization: `OAuth oauth_consumer_key="${trelloApiKey()}", oauth_token="${token}"`,
+  };
+  const downloadUrl = `https://api.trello.com/1/cards/${cardId}/attachments/${attachmentId}/download/${encodeURIComponent(attachment.name || "file")}`;
 
-  let upstream = await fetch(authedUrl);
+  let upstream = await fetch(downloadUrl, { headers: authHeader });
 
-  // Some Trello attachment URLs are already pre-signed (e.g. S3) — appending
-  // key/token can break the signature. If the authed attempt fails, retry
-  // the bare url in case it was already publicly accessible as-is.
+  // Link-style attachments (not file uploads) don't live at the /download
+  // route — fall back to the attachment's own url, authed then bare.
+  if (!upstream.ok) {
+    upstream = await fetch(attachment.url, { headers: authHeader });
+  }
   if (!upstream.ok) {
     upstream = await fetch(attachment.url);
   }

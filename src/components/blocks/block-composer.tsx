@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
-import { BookmarkIcon, File01Icon, Image02Icon, Table01Icon, TextIcon } from "@hugeicons/core-free-icons";
+import { AiMagicIcon, BookmarkIcon, File01Icon, Image02Icon, Table01Icon, TextIcon } from "@hugeicons/core-free-icons";
 import { serializeBlock } from "@/lib/trello/blocks";
-import { expandLoremAtCursor } from "@/lib/lorem";
+import { generateLorem } from "@/lib/lorem";
 import type { TrelloCard, TrelloList } from "@/lib/trello/types";
 
-type PendingType = "page" | "bookmark" | "image" | "table" | null;
+type PendingType = "page" | "bookmark" | "image" | "table" | "lorem" | null;
 
 interface BlockOption {
-  type: "text" | "page" | "bookmark" | "image" | "table";
+  type: "text" | "page" | "bookmark" | "image" | "table" | "lorem";
   label: string;
   icon: IconSvgElement;
 }
@@ -21,7 +21,10 @@ const OPTIONS: BlockOption[] = [
   { type: "table", label: "Table", icon: Table01Icon },
   { type: "bookmark", label: "Bookmark", icon: BookmarkIcon },
   { type: "image", label: "Image", icon: Image02Icon },
+  { type: "lorem", label: "Lorem ipsum", icon: AiMagicIcon },
 ];
+
+const LOREM_SLASH_RE = /^\/lorem(\d+)$/i;
 
 interface BlockComposerProps {
   boardId: string;
@@ -29,9 +32,19 @@ interface BlockComposerProps {
   pages: { id: string; name: string }[];
   onCreated: (card: TrelloCard, list?: TrelloList) => void;
   onReconciled: (tempId: string, card: TrelloCard | null) => void;
+  onPending?: (tempId: string, kind: "table" | "bookmark") => void;
+  onPendingResolved?: (tempId: string) => void;
 }
 
-export function BlockComposer({ boardId, listId, pages, onCreated, onReconciled }: BlockComposerProps) {
+export function BlockComposer({
+  boardId,
+  listId,
+  pages,
+  onCreated,
+  onReconciled,
+  onPending,
+  onPendingResolved,
+}: BlockComposerProps) {
   const [value, setValue] = useState("");
   const [pendingType, setPendingType] = useState<PendingType>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,13 +116,18 @@ export function BlockComposer({ boardId, listId, pages, onCreated, onReconciled 
     if (!name.trim()) return;
     setValue("");
     setPendingType(null);
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    onPending?.(tempId, "table");
     fetch(`/api/lists/${listId}/blocks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "table", name, boardId }),
     })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => data && onCreated(data.card, data.list));
+      .then((data) => {
+        onPendingResolved?.(tempId);
+        if (data) onCreated(data.card, data.list);
+      });
   }
 
   function submitInternalPage(page: { id: string; name: string }) {
@@ -128,13 +146,25 @@ export function BlockComposer({ boardId, listId, pages, onCreated, onReconciled 
     if (!url.trim()) return;
     setValue("");
     setPendingType(null);
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    onPending?.(tempId, "bookmark");
     fetch(`/api/lists/${listId}/blocks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "bookmark", url }),
     })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => data && onCreated(data.card));
+      .then((data) => {
+        onPendingResolved?.(tempId);
+        if (data) onCreated(data.card);
+      });
+  }
+
+  function submitLorem(countStr: string) {
+    const count = parseInt(countStr, 10);
+    setPendingType(null);
+    if (!count) return;
+    submitText(generateLorem(count));
   }
 
   function submitImage(file: File) {
@@ -181,6 +211,10 @@ export function BlockComposer({ boardId, listId, pages, onCreated, onReconciled 
         return;
       }
       submitBookmark(value);
+      return;
+    }
+    if (pendingType === "lorem") {
+      submitLorem(value);
     }
   }
 
@@ -189,17 +223,14 @@ export function BlockComposer({ boardId, listId, pages, onCreated, onReconciled 
       setValue("");
       return;
     }
-    if (e.key === " " || e.key === "Tab") {
-      const el = e.currentTarget;
-      const expanded = expandLoremAtCursor(el.value, el.selectionStart);
-      if (expanded) {
-        e.preventDefault();
-        setValue(expanded.value);
-        requestAnimationFrame(() => el.setSelectionRange(expanded.cursorPos, expanded.cursorPos));
-        return;
-      }
-    }
     if (e.key !== "Enter") return;
+    // "/lorem25" + Enter generates directly, bypassing the menu
+    const loremMatch = value.match(LOREM_SLASH_RE);
+    if (loremMatch) {
+      e.preventDefault();
+      submitLorem(loremMatch[1]);
+      return;
+    }
     // Enter selects a highlighted slash-command option; otherwise it's a normal newline
     if (menuOpen) {
       e.preventDefault();
@@ -216,9 +247,12 @@ export function BlockComposer({ boardId, listId, pages, onCreated, onReconciled 
           ? "Paste a link, or search a page…"
           : pendingType === "image"
             ? "Choose an image…"
-            : "Type '/' for commands";
+            : pendingType === "lorem"
+              ? "How many words?"
+              : "Type '/' for commands";
 
-  const isNameEntry = pendingType === "page" || pendingType === "table" || pendingType === "bookmark";
+  const isNameEntry =
+    pendingType === "page" || pendingType === "table" || pendingType === "bookmark" || pendingType === "lorem";
 
   return (
     <div className="relative mt-2">
@@ -228,6 +262,7 @@ export function BlockComposer({ boardId, listId, pages, onCreated, onReconciled 
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleNameKeyDown}
           autoFocus
+          inputMode={pendingType === "lorem" ? "numeric" : undefined}
           placeholder={placeholder}
           className="w-full border-none bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground"
         />

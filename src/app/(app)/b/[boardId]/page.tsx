@@ -1,6 +1,6 @@
 import { createList, getBoard, getBoardLists, getBoardMemberships, getListCards, getMe } from "@/lib/trello/client";
 import { requireToken, withAuthGuard } from "@/lib/trello/guard";
-import { HOME_LIST_NAME } from "@/lib/trello/blocks";
+import { COVER_CARD_NAME, HOME_LIST_NAME } from "@/lib/trello/blocks";
 import { BlockCanvas } from "@/components/blocks/block-canvas";
 
 export default async function BoardHomePage({ params }: { params: Promise<{ boardId: string }> }) {
@@ -20,7 +20,9 @@ export default async function BoardHomePage({ params }: { params: Promise<{ boar
     lists.find((l) => l.name === HOME_LIST_NAME) ?? (await withAuthGuard(createList(boardId, HOME_LIST_NAME, token)));
   const pages = lists.filter((l) => l.id !== homeList.id);
 
-  const cards = await withAuthGuard(getListCards(homeList.id, token));
+  const allCards = await withAuthGuard(getListCards(homeList.id, token));
+  const coverCard = allCards.find((c) => c.name === COVER_CARD_NAME);
+  const cards = allCards.filter((c) => c.name !== COVER_CARD_NAME);
   const pageNames = Object.fromEntries(pages.map((l) => [l.id, l.name]));
 
   return (
@@ -34,6 +36,7 @@ export default async function BoardHomePage({ params }: { params: Promise<{ boar
       me={me}
       inviteBoardId={boardId}
       workspaceMemberships={memberships}
+      cover={coverCard ? { cardId: coverCard.id, attachmentId: coverCard.desc } : null}
     />
   );
 }

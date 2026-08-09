@@ -1,5 +1,6 @@
 export const HOME_LIST_NAME = "DaSpace";
 export const PERSONAL_BOARD_NAME = "DaSpace Personal";
+export const COVER_CARD_NAME = "__daspace_cover__";
 
 export type BlockType = "text" | "page" | "bookmark" | "image" | "table";
 
@@ -28,8 +29,4 @@ export function serializeBlock(type: BlockType, ref: string | null, content: str
 
 export function isBlockCard(desc: string) {
   return MARKER_RE.test(desc);
-}
-
-export function isCanvasList(cardDescs: string[]) {
-  return cardDescs.length === 0 || cardDescs.every(isBlockCard);
 }

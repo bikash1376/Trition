@@ -4,6 +4,7 @@ import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { BookmarkIcon } from "@hugeicons/core-free-icons";
 import { BlockHoverActions } from "@/components/blocks/block-hover-actions";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 
 interface BookmarkBlockProps {
   cardId: string;
@@ -24,6 +25,7 @@ function hostnameOf(url: string) {
 export function BookmarkBlock({ cardId, url, title, onEdited, onDeleted }: BookmarkBlockProps) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(url);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   function save() {
     setEditing(false);
@@ -74,7 +76,13 @@ export function BookmarkBlock({ cardId, url, title, onEdited, onDeleted }: Bookm
         </span>
         <span className="truncate text-xs text-muted-foreground">{hostnameOf(url)}</span>
       </a>
-      <BlockHoverActions onEdit={() => setEditing(true)} onDelete={remove} />
+      <BlockHoverActions onEdit={() => setEditing(true)} onDelete={() => setConfirmOpen(true)} />
+      <ConfirmDeleteDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        description="This bookmark will be permanently deleted."
+        onConfirm={remove}
+      />
     </div>
   );
 }

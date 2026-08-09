@@ -6,6 +6,7 @@ import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete02Icon, File01Icon } from "@hugeicons/core-free-icons";
 import { NavLinkSpinner } from "@/components/shell/nav-link-spinner";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 
 interface SidebarPageLinkProps {
   href: string;
@@ -17,10 +18,15 @@ interface SidebarPageLinkProps {
 export function SidebarPageLink({ href, listId, name, active }: SidebarPageLinkProps) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  async function handleDelete(e: React.MouseEvent) {
+  function handleDeleteClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    setConfirmOpen(true);
+  }
+
+  async function handleDelete() {
     setDeleting(true);
     await fetch(`/api/lists/${listId}`, { method: "DELETE" });
     router.refresh();
@@ -39,12 +45,19 @@ export function SidebarPageLink({ href, listId, name, active }: SidebarPageLinkP
       </Link>
       <button
         type="button"
-        onClick={handleDelete}
+        onClick={handleDeleteClick}
         disabled={deleting}
         className="shrink-0 cursor-pointer opacity-0 transition-opacity group-hover:opacity-100"
       >
         <HugeiconsIcon icon={Delete02Icon} size={13} className="text-muted-foreground hover:text-destructive" />
       </button>
+      <ConfirmDeleteDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Delete "${name}"?`}
+        description="This page and its content will be archived in Trello."
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

@@ -70,7 +70,7 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-2 px-3 py-3">
         <DaSpaceMark className="h-5 w-5" />
-        <span className="text-sm font-semibold">DaSpace</span>
+        <span className="font-script text-lg leading-none">Trition</span>
       </div>
 
       <Separator className="bg-sidebar-border" />
