@@ -1,6 +1,8 @@
 # Trition
 
-A Notion-like workspace UI backed entirely by Trello. There is no app database — every page, table, and block is a real Trello list/card/label under the hood. See [`SPEC.md`](./SPEC.md) for the full design and [`CHECKLIST.md`](./CHECKLIST.md) for current build status.
+<img src="public/banner.png">
+
+A Notion-like workspace UI using Trello as a headless database. No custom database or backend infra required — all your notes, pages, and components are stored directly in Trello.
 
 > Internally, the app still creates a Trello list named **`DaSpace`** as the hidden "home" list for every board (see `HOME_LIST_NAME` in `src/lib/trello/blocks.ts`) — that's a stable identifier already baked into existing users' boards, not a rebrand miss. Everywhere the app is actually *displayed*, it's Trition.
 
