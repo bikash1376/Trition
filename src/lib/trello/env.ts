@@ -7,3 +7,7 @@ export function trelloApiKey() {
 export function appUrl() {
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
+
+export function demoTrelloToken() {
+  return process.env.DEMO_TRELLO_TOKEN || null;
+}

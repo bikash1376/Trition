@@ -43,6 +43,7 @@ Trition has no database of its own and no app-owned user accounts — the only e
    | `TRELLO_API_SECRET` | No | Present in `.env.local.example` for completeness, but unused — the app uses Trello's OAuth1.0a **token** flow, which needs no client secret (see "Auth flow" below). |
    | `NEXT_PUBLIC_APP_URL` | Yes | The URL the app is actually served from, e.g. `http://localhost:3211` locally or `https://your-domain.com` in production. Used to build the Trello OAuth `return_url` — **must exactly match** where the app is running, or login will silently fail to return. |
    | `NEXT_PUBLIC_DATABUDDY_CLIENT_ID` | No | [Databuddy](https://www.databuddy.cc) analytics client id. Leave blank to skip analytics entirely — the tracker only mounts if this is set. |
+   | `DEMO_TRELLO_TOKEN` | No | Token for a throwaway Trello account, powers the "Try now" demo login on `/login`. Leave blank to hide that button entirely. See "Demo mode" below. |
 
    `.env*` is already gitignored — never commit real keys.
 
@@ -72,6 +73,15 @@ Trition uses Trello's OAuth1.0a **token** flow, not a full 3-legged OAuth exchan
 5. Every server-side Trello API call reads the token from that cookie via `src/lib/trello/session.ts`.
 6. If Trello ever rejects that token (401), `withAuthGuard()` sends the user to `/api/auth/trello/expire`, which clears the cookie and redirects to `/login`.
 7. `/login` itself redirects to `/` if a valid session cookie is already present.
+
+### Demo mode ("Try now")
+
+Optional, off by default. If `DEMO_TRELLO_TOKEN` is set, `/login` shows a "Try now" button next to the real Trello login. Clicking it:
+
+1. `POST /api/auth/demo` — before anything else, if every board on the demo account has been idle for over an hour, they're all deleted (so the next visitor gets a genuinely empty workspace, not the last visitor's mess).
+2. Sets the **same session cookie** the real login flow uses, just pointed at the demo account's token, and redirects to `/home` — from there it's the exact same app, no special-cased demo UI.
+
+This is a single shared account, not one sandbox per visitor — concurrent demo visitors see the same boards. That's a deliberate simplification: real per-visitor isolation would mean either a separate Trello account per click (not possible without asking visitors to sign up, defeating the point) or building scoping logic so a shared account's boards can't leak between sessions, which is a lot of surface area for a "just let people poke around" button. See `.env.local.example` for how to mint the demo account's token — it's the same manual token-mint URL developers already use to get a Trello token without going through OAuth.
 
 ## How it works
 

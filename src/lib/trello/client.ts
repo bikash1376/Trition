@@ -63,7 +63,7 @@ export function getMe(token: string) {
 export function getMyBoards(token: string) {
   return cached(`my-boards:${token}`, TTL, () =>
     trelloFetch<TrelloBoard[]>("/members/me/boards", token, {
-      fields: "name,url,closed,prefs",
+      fields: "name,url,closed,prefs,dateLastActivity",
       filter: "open",
     }),
   );

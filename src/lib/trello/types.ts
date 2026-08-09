@@ -11,6 +11,7 @@ export interface TrelloBoard {
   url: string;
   closed: boolean;
   desc?: string;
+  dateLastActivity?: string | null;
   prefs?: {
     permissionLevel: "private" | "org" | "public";
     comments?: "disabled" | "members" | "org" | "public";

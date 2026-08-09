@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { LoginHero } from "@/components/login-hero";
 import { getTrelloToken } from "@/lib/trello/session";
+import { demoTrelloToken } from "@/lib/trello/env";
 
 export default async function LoginPage() {
   const token = await getTrelloToken();
   if (token) redirect("/");
 
-  return <LoginHero />;
+  return <LoginHero demoEnabled={demoTrelloToken() !== null} />;
 }

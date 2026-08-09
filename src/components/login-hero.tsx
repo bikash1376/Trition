@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useState, type TransitionEvent } from "react";
-import { GoogleMark, TrelloMark } from "@/components/icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { PlayCircleIcon } from "@hugeicons/core-free-icons";
+import { TrelloMark } from "@/components/icons";
 
 type Phase = "video-big" | "video-shrink" | "video-up" | "done";
 
-export function LoginHero() {
+interface LoginHeroProps {
+  demoEnabled: boolean;
+}
+
+export function LoginHero({ demoEnabled }: LoginHeroProps) {
   const [phase, setPhase] = useState<Phase>("video-big");
   const isDone = phase === "done";
 
@@ -81,17 +87,33 @@ export function LoginHero() {
             <span className="text-sm font-medium">Trello</span>
           </a>
 
-          <button
-            type="button"
-            disabled
-            className="flex cursor-not-allowed flex-col items-center gap-2 rounded-lg border border-border bg-card px-4 py-5 opacity-50"
-          >
-            <GoogleMark className="h-6 w-6" />
-            <span className="text-sm font-medium">Google</span>
-          </button>
+          {demoEnabled ? (
+            <form action="/api/auth/demo" method="post" className="contents">
+              <button
+                type="submit"
+                className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card px-4 py-5 transition-colors hover:bg-accent"
+              >
+                <HugeiconsIcon icon={PlayCircleIcon} className="h-6 w-6" />
+                <span className="text-sm font-medium">Try now</span>
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="flex cursor-not-allowed flex-col items-center gap-2 rounded-lg border border-border bg-card px-4 py-5 opacity-50"
+            >
+              <HugeiconsIcon icon={PlayCircleIcon} className="h-6 w-6" />
+              <span className="text-sm font-medium">Try now</span>
+            </button>
+          )}
         </div>
 
-        <p className="text-xs text-muted-foreground">Google sign-in is coming later.</p>
+        <p className="text-xs text-muted-foreground">
+          {demoEnabled
+            ? "No Trello account? Explore a shared demo workspace — it resets periodically."
+            : "Demo mode isn't configured on this deployment."}
+        </p>
       </div>
     </div>
   );
