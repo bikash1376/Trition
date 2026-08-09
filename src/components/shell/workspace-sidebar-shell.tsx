@@ -8,6 +8,7 @@ import { Archive04Icon, CorporateIcon, Home01Icon, Logout03Icon, UserLock01Icon 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TextShimmer } from "@/components/better/text-shimmer";
 import { SidebarPageLink } from "@/components/shell/sidebar-page-link";
 import { NavLinkSpinner } from "@/components/shell/nav-link-spinner";
 import { CreateWorkspaceButton } from "@/components/shell/create-workspace-button";
@@ -66,11 +67,13 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center px-3 py-3">
-        <span className="brand-shimmer font-script text-2xl leading-none">Trition</span>
+      <div className="flex items-center px-3 py-4">
+        <TextShimmer as="span" className="font-script text-2xl leading-none" duration={2.5}>
+          Trition
+        </TextShimmer>
       </div>
 
-      <div className="px-2 py-2">
+      <div className="px-2 py-3">
         <Link
           href="/home"
           className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
@@ -86,11 +89,11 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
 
       <ScrollArea className="flex-1">
         <div className="flex h-full flex-col">
-          <div className="px-2 py-2">
-            <p className="px-2 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+          <div className="px-2 py-3">
+            <p className="px-2 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
               Workspaces
             </p>
-            <nav className="flex flex-col gap-0.5">
+            <nav className="flex flex-col gap-1">
               {boards.map((board) => (
                 <Link
                   key={board.id}
@@ -113,23 +116,29 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
             </nav>
           </div>
 
-          <div className="flex flex-1 flex-col px-2 py-2">
-            <div className="flex items-center justify-between px-2 pb-1">
-              <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Pages</p>
-              {pages && <NewPageButton boardId={pages.boardId} pageHrefBase={context.pageHrefBase} />}
-            </div>
+          <div className="flex flex-1 flex-col px-2 py-3">
+            <p className="px-2 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Pages</p>
             {loadingPages || !pages ? (
               <div className="flex flex-col gap-1.5 px-2 py-1">
                 <Skeleton className="h-5 w-full" />
                 <Skeleton className="h-5 w-3/4" />
               </div>
             ) : pages.lists.length === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-2">
-                <HugeiconsIcon icon={Archive04Icon} size={16} className="text-muted-foreground" />
-                <p className="text-muted-foreground text-sm">Empty</p>
-              </div>
+              <NewPageButton
+                boardId={pages.boardId}
+                pageHrefBase={context.pageHrefBase}
+                trigger={
+                  <button
+                    type="button"
+                    className="flex flex-1 flex-col items-center justify-center gap-2 rounded-md text-muted-foreground hover:text-foreground"
+                  />
+                }
+              >
+                <HugeiconsIcon icon={Archive04Icon} size={22} />
+                <span className="text-sm">Create New</span>
+              </NewPageButton>
             ) : (
-              <nav className="flex flex-col gap-0.5">
+              <nav className="flex flex-col gap-1">
                 {pages.lists.map((list) => (
                   <SidebarPageLink
                     key={list.id}
@@ -145,7 +154,7 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
         </div>
       </ScrollArea>
 
-      <div className="flex items-center justify-between gap-2 px-3 py-2">
+      <div className="flex items-center justify-between gap-2 px-3 py-4">
         <span className="min-w-0 flex-1 truncate text-sm">{me.fullName || me.username}</span>
         <form action="/api/auth/logout" method="post">
           <Button type="submit" variant="ghost" size="icon-sm" title="Log out">

@@ -18,14 +18,19 @@ import { LabelPicker } from "@/components/table/label-picker";
 import { MemberPicker } from "@/components/table/member-picker";
 import { StatusPills } from "@/components/table/status-pills";
 import { MemberAvatar } from "@/components/table/avatar-stack";
+import { CustomCell } from "@/components/table/custom-cell";
+import { ColumnHeaderMenu } from "@/components/table/column-header-menu";
+import { AddColumnButton } from "@/components/table/add-column-button";
 import { EditableTitle } from "@/components/shell/editable-title";
 import type { TrelloCard, TrelloLabel, TrelloMember } from "@/lib/trello/types";
+import type { CardProps, ColumnDef, ColumnType, PropsValue, SelectOption } from "@/lib/trello/columns";
 
 const URL_RE = /^https?:\/\/\S+$/;
 
-interface CardRow {
+export interface CardRow {
   card: TrelloCard;
   creator: TrelloMember | null;
+  props?: CardProps;
 }
 
 interface CardTableProps {
@@ -34,6 +39,7 @@ interface CardTableProps {
   rows: CardRow[];
   members: TrelloMember[];
   labels: TrelloLabel[];
+  columns?: ColumnDef[];
   me: TrelloMember;
   compact?: boolean;
   showTitle?: boolean;
@@ -56,12 +62,14 @@ export function CardTable({
   rows: initialRows,
   members,
   labels,
+  columns: initialColumns,
   me,
   compact,
   showTitle = true,
   headerActions,
 }: CardTableProps) {
   const [rows, setRows] = useState(initialRows);
+  const [columns, setColumns] = useState(initialColumns ?? []);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [newCardName, setNewCardName] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
@@ -199,6 +207,52 @@ export function CardTable({
     );
   }
 
+  function handlePropChanged(cardId: string, columnId: string, value: PropsValue) {
+    setRows((prev) =>
+      prev.map((r) => (r.card.id === cardId ? { ...r, props: { ...r.props, [columnId]: value } } : r)),
+    );
+    fetch(`/api/cards/${cardId}/props`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ columnId, value }),
+    });
+  }
+
+  function handleColumnAdded(name: string, type: ColumnType) {
+    fetch(`/api/lists/${listId}/columns`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, type }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setColumns(data.columns);
+      });
+  }
+
+  function handleColumnRenamed(columnId: string, name: string) {
+    setColumns((prev) => prev.map((c) => (c.id === columnId ? { ...c, name } : c)));
+    fetch(`/api/lists/${listId}/columns/${columnId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  function handleColumnOptionsChanged(columnId: string, options: SelectOption[]) {
+    setColumns((prev) => prev.map((c) => (c.id === columnId ? { ...c, options } : c)));
+    fetch(`/api/lists/${listId}/columns/${columnId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ options }),
+    });
+  }
+
+  function handleColumnDeleted(columnId: string) {
+    setColumns((prev) => prev.filter((c) => c.id !== columnId));
+    fetch(`/api/lists/${listId}/columns/${columnId}`, { method: "DELETE" });
+  }
+
   return (
     <div className={compact ? "flex flex-col" : "flex h-full flex-col px-8 py-8"}>
       <div className={`group mb-4 flex items-center ${showTitle ? "justify-between" : "justify-end"}`}>
@@ -280,10 +334,26 @@ export function CardTable({
                   </button>
                 </th>
               ))}
+              {columns.map((col) => (
+                <th key={col.id} className="group w-40 px-3 py-2 font-medium">
+                  <div className="flex items-center gap-1 whitespace-nowrap">
+                    {col.name}
+                    <ColumnHeaderMenu
+                      column={col}
+                      onRenamed={(name) => handleColumnRenamed(col.id, name)}
+                      onOptionsChanged={(options) => handleColumnOptionsChanged(col.id, options)}
+                      onDeleted={() => handleColumnDeleted(col.id)}
+                    />
+                  </div>
+                </th>
+              ))}
+              <th className="w-8 px-2 py-2">
+                <AddColumnButton onAdd={handleColumnAdded} />
+              </th>
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map(({ card, creator }) => {
+            {visibleRows.map(({ card, creator, props }) => {
               const isLinkCard = URL_RE.test(card.name.trim());
               return (
                 <tr
@@ -348,6 +418,16 @@ export function CardTable({
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
+                  {columns.map((col) => (
+                    <td key={col.id} className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <CustomCell
+                        column={col}
+                        value={props?.[col.id] ?? null}
+                        onChange={(value) => handlePropChanged(card.id, col.id, value)}
+                      />
+                    </td>
+                  ))}
+                  <td />
                 </tr>
               );
             })}

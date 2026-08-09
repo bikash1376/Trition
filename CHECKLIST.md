@@ -2,7 +2,7 @@
 
 Tracks current build phase. Update this file whenever a phase starts/finishes — don't let it go stale.
 
-**Current phase: table pages now break out wider than regular blocks (with their own horizontal scroll), workspace covers are full-width with a user-configurable height (25/40/50vh), the bold/italic/strikethrough/heading toolbar buttons in the markdown editor actually toggle off now, table's Status column no longer wraps and Created By shows an avatar + first name, and another sidebar pass (separators gone, bottom row is just name + logout icon, empty-pages icon centered in real space, shimmer switched to a visible primary-color sweep instead of a too-subtle gray one). See Phase 28. Not yet committed — awaiting the go-ahead.**
+**Current phase: sidebar brand shimmer swapped from a hand-rolled CSS version to the `TextShimmer` Better Component (`src/components/better/text-shimmer.tsx`), recolored so resting text is grayish and the sweep is white instead of the component's dark-mode default of near-black; the empty-pages state is now a real clickable "Create New" (opens the same new-page modal), the redundant header `+` next to "PAGES" is gone; sidebar section spacing increased throughout. See Phase 30. Not yet committed — awaiting the go-ahead.**
 
 **Build-verification note:** `next build`'s TypeScript pass reads `.next/dev/types/*`, which a live `next dev` process rewrites continuously. Running both at once corrupts those generated files (syntax errors in `routes.d.ts`/`validator.ts` that don't correspond to any source change). `eslint .` is unaffected and has been clean through this whole session. To get a real `next build` check, stop any running `next dev` first.
 
@@ -170,14 +170,8 @@ Trello's Custom Fields Power-Up **cannot be enabled through the API** (confirmed
 - [ ] `.env.local.example` reviewed and accurate for production use
 - [ ] `NEXT_PUBLIC_APP_URL` / OAuth return URL behavior double-checked for a non-localhost deployment
 
-## Phase 16 — Our own table columns (replaces Trello Custom Fields)
-Same trick as blocks: a hidden marker as the first line of a card's `desc` (distinct prefix from the block marker so `isCanvasList()`'s detection is unaffected), just applied to table rows instead of canvas cards.
-- [ ] Column *schema* storage: a special hidden card per list (not shown as a row) holding the column definitions as JSON — mirrors how the board's `DaSpace` list already acts as hidden-in-plain-sight infrastructure
-- [ ] Column *value* storage: each row card gets a hidden `<!-- daspace:props={...} -->` marker prepended to its `desc`, ahead of the real description text
-- [ ] Add / edit / delete columns from the table view — deleting always confirms via a modal first
-- [ ] Column types: reuse the Text/Number/Date/Checkbox/Select set already designed (the UI from the abandoned Phase 13 attempt is largely reusable — same shapes, different storage backend)
-- [ ] Rename columns
-- [ ] Inline per-row editing, consistent with how Status/Members already work
+## Phase 16 — Our own table columns (replaces Trello Custom Fields) — done
+Same trick as blocks: a hidden marker prepended to a row card's `desc`, distinct from the block marker so nothing else that reads `desc` gets confused — see Phase 29 for the finished implementation.
 
 ## Phase 17 — Label management — done
 Unlike Custom Fields, Trello Labels are fully API-manageable — no power-up, no manual-enable wall.
@@ -276,8 +270,24 @@ Reported after Phase 23's fallback attempt still didn't fix broken images live: 
 - Considered, not added: **"Last Edited By" column** — would mirror the existing Created By column, but doing it as a first-class table column means fetching the last editor for every row on load (same N+1 pattern already used for Created By), which is a real per-row API cost on top of what's already there. Better suited as an opt-in custom column (Phase 16) than a column everyone pays for by default — flagging the tradeoff rather than guessing
 - Not attempted this round: "add more blocks / more workspace settings if you think you can" — the explicit list above was already large; happy to take a pass at new block types (e.g. divider, checklist/todo) or additional settings as a follow-up if wanted
 
+## Phase 29 — Custom table columns (Phase 16, finally built) — done
+Same trick as blocks: a hidden marker, but two different kinds of hidden storage needed here — one per-list (the column definitions) and one per-row (each row's values).
+- [x] **Schema storage**: `src/lib/trello/columns.ts` — a hidden card per list, `__daspace_columns__` (same sentinel-card pattern as the cover marker), `desc` holds the column list as plain JSON (`ColumnDef[]`: id/name/type/options). Filtered out of `tableCards` alongside the cover/block markers in both unified page routes and `table-data/route.ts`, so it never shows up as a row
+- [x] **Value storage**: each row's `desc` gets `<!-- daspace:props={base64 JSON} -->` prepended ahead of the real description text — base64'd (not just URL-encoded) specifically so a value containing the literal substring `-->` can't ever prematurely close the HTML comment
+- [x] **Description stays clean everywhere it's read/written**: `GET /api/cards/[cardId]` now strips the props marker before returning `desc`; `PATCH` reads the *current* props first and re-merges them into whatever new `desc` is being saved, so editing a card's description can never silently wipe its column values. Verified live: set a description after already setting a column value, confirmed both the description came back clean and the column value survived
+- [x] **Column CRUD**: `POST/GET /api/lists/[listId]/columns`, `PATCH/DELETE /api/lists/[listId]/columns/[columnId]` — add, rename, delete, and (for select columns) manage the option list, all via `ColumnHeaderMenu` (hover-to-edit on the column header, matches the block hover-actions pattern) and `AddColumnButton` (a trailing `+` header cell), delete always behind the existing `ConfirmDeleteDialog`
+- [x] **Column types**: Text, Number, Date (native `<input type="date">`, no custom calendar built), Checkbox, Select (colored pills reusing the existing Trello label-color palette, single-select with a Clear option) — `CustomCell` renders/edits per type inline, same click-to-edit convention as the rest of the table
+- [x] **Per-row value storage**: `PATCH /api/cards/[cardId]/props` updates one column's value on one row, preserving the rest of that row's props and its real description
+- [x] Wired into all three places a table can render: the two unified page routes (server-fetched, passed as `tableColumns`) and `TableBlock`'s own `table-data` fetch (client-side, embedded named tables)
+- Scoped out deliberately: sorting and filtering only cover the four built-in columns — custom columns aren't sortable/filterable yet. Deleting a column doesn't sweep its now-orphaned value out of every row's `props` (cheap to skip since it's simply ignored once the column is gone; not worth an extra per-row API call on every delete)
+- Verified end-to-end in a live logged-in session (not just typecheck/lint): created a "Priority" select column, added High/Low options, set a row to "High," confirmed the pill rendered, confirmed the value survived an unrelated description edit, and confirmed the card detail sheet's description field showed no leaked marker text
+
+## Phase 30 — Sidebar: real shimmer component, clickable empty state, spacing — done
+- [x] **Shimmer swapped to the Better Component**: `src/components/better/text-shimmer.tsx` (framer-motion, `motion/react`) now drives the "Trition" wordmark instead of the earlier hand-rolled `.brand-shimmer` CSS class, which was deleted from `globals.css`. The component's own dark-mode default (`--base-gradient-color: neutral-900`, i.e. the sweep rendering *black* against dark text — invisible/wrong) was the actual bug; fixed by changing that one variable to `neutral-50` (white) directly in the component file. `--base-color` (the resting text color, `neutral-400`) was already the grayish tone asked for — left as-is
+- [x] **Empty-pages state is now the "add page" affordance**: `NewPageButton` gained an optional `trigger`/`children` pair (mirrors the existing `DialogTrigger render=` convention used elsewhere) so its dialog can be opened from a custom trigger instead of its default small button. The empty state (Archive icon + "Create New" text, `pages.lists.length === 0`) now *is* that custom trigger; the separate `+` that used to sit next to the "Pages" section header is gone — verified live that clicking "Create New" opens the same "New page" modal
+- [x] **Sidebar spacing increased**: brand row and bottom user row `py-3` → `py-4`; each section's own padding `py-2` → `py-3`; nav-list item gaps `gap-0.5` → `gap-1`; section label bottom padding `pb-1` → `pb-1.5` — more breathing room throughout, matching the reference (`ref/spacing.png`)
+
 ## What's left (honest current state, 2026-08-09)
-- **Our own table columns** (Phase 16) — biggest remaining item, still not started, flagged again this round ("adding removing columns with custom names is still not there"). Add/edit/rename/delete custom columns using the same hidden-metadata-in-`desc` trick as blocks, replacing the abandoned Trello-Custom-Fields approach. UX idea from this round: expose add/edit/remove via a hover tooltip/popover on the table.
 - **Generic File block** (Phase 14) — any file type, not just images.
 - **Broader mobile responsiveness** — sidebar toggle done, rest of the layout (table/canvas padding, toolbar wrapping) not audited yet
 - **Smaller polish**: theme toggle, retry-on-429, public share-link surfacing, deploy prep.

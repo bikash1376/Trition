@@ -10,6 +10,7 @@ import {
 } from "@/lib/trello/client";
 import { requireToken, withAuthGuard } from "@/lib/trello/guard";
 import { HOME_LIST_NAME, PERSONAL_BOARD_NAME, isBlockCard } from "@/lib/trello/blocks";
+import { COLUMNS_SCHEMA_CARD_NAME, parseCardProps, parseColumnSchema, type CardProps, type ColumnDef } from "@/lib/trello/columns";
 import { BlockCanvas } from "@/components/blocks/block-canvas";
 import type { TrelloLabel, TrelloMember } from "@/lib/trello/types";
 
@@ -31,18 +32,23 @@ export default async function HomeListPage({ params }: { params: Promise<{ listI
   const pages = lists.filter((list) => list.name !== HOME_LIST_NAME);
   const pageNames = Object.fromEntries(pages.map((list) => [list.id, list.name]));
 
-  const tableCards = cards.filter((card) => !isBlockCard(card.desc));
+  const schemaCard = cards.find((card) => card.name === COLUMNS_SCHEMA_CARD_NAME);
+  const tableCards = cards.filter((card) => !isBlockCard(card.desc) && card.name !== COLUMNS_SCHEMA_CARD_NAME);
   const blockCards = cards.filter((card) => isBlockCard(card.desc));
+  const tableColumns: ColumnDef[] = schemaCard ? parseColumnSchema(schemaCard.desc) : [];
 
   let members: TrelloMember[] = [];
   let labels: TrelloLabel[] = [];
-  let tableRows: { card: (typeof cards)[number]; creator: TrelloMember | null }[] = [];
+  let tableRows: { card: (typeof cards)[number]; creator: TrelloMember | null; props: CardProps }[] = [];
   if (tableCards.length > 0) {
     [members, labels] = await withAuthGuard(
       Promise.all([getBoardMembers(personalBoard.id, token), getBoardLabels(personalBoard.id, token)]),
     );
     const creators = await withAuthGuard(Promise.all(tableCards.map((card) => getCardCreator(card.id, token))));
-    tableRows = tableCards.map((card, i) => ({ card, creator: creators[i] }));
+    tableRows = tableCards.map((card, i) => {
+      const { props, rest } = parseCardProps(card.desc);
+      return { card: { ...card, desc: rest }, creator: creators[i], props };
+    });
   }
 
   return (
@@ -58,6 +64,7 @@ export default async function HomeListPage({ params }: { params: Promise<{ listI
       tableRows={tableRows}
       tableMembers={members}
       tableLabels={labels}
+      tableColumns={tableColumns}
     />
   );
 }

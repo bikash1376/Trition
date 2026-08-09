@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Add01Icon } from "@hugeicons/core-free-icons";
@@ -9,7 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
-export function NewPageButton({ boardId, pageHrefBase }: { boardId: string; pageHrefBase: string }) {
+interface NewPageButtonProps {
+  boardId: string;
+  pageHrefBase: string;
+  trigger?: ReactElement;
+  children?: ReactNode;
+}
+
+export function NewPageButton({ boardId, pageHrefBase, trigger, children }: NewPageButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -36,13 +43,15 @@ export function NewPageButton({ boardId, pageHrefBase }: { boardId: string; page
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <button
-            type="button"
-            className="rounded p-0.5 text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
-          />
+          trigger ?? (
+            <button
+              type="button"
+              className="rounded p-0.5 text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
+            />
+          )
         }
       >
-        <HugeiconsIcon icon={Add01Icon} size={14} />
+        {children ?? <HugeiconsIcon icon={Add01Icon} size={14} />}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

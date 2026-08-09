@@ -12,6 +12,7 @@ import {
   updateCardDesc,
   updateCardName,
 } from "@/lib/trello/client";
+import { parseCardProps, serializeCardProps } from "@/lib/trello/columns";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ cardId: string }> }) {
   const { cardId } = await params;
@@ -27,7 +28,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ car
       getCardComments(cardId, token),
       getCardAttachments(cardId, token),
     ]);
-    return NextResponse.json({ card, members, creator, lastEditor, comments, attachments });
+    const { props, rest } = parseCardProps(card.desc);
+    return NextResponse.json({ card: { ...card, desc: rest }, props, members, creator, lastEditor, comments, attachments });
   } catch (err) {
     if (err instanceof TrelloApiError) return NextResponse.json({ error: err.message }, { status: err.status });
     throw err;
@@ -50,7 +52,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ca
       card = await updateCardName(cardId, body.name.trim(), token);
     }
     if (typeof body?.desc === "string") {
-      card = await updateCardDesc(cardId, body.desc, token);
+      const current = await getCard(cardId, token);
+      const { props } = parseCardProps(current.desc);
+      card = await updateCardDesc(cardId, serializeCardProps(props, body.desc), token);
+      card = { ...card, desc: body.desc };
     }
     return NextResponse.json({ card });
   } catch (err) {

@@ -9,11 +9,12 @@ import { ImageBlock } from "@/components/blocks/image-block";
 import { PageBlock } from "@/components/blocks/page-block";
 import { TableBlock } from "@/components/blocks/table-block";
 import { TextBlock } from "@/components/blocks/text-block";
-import { CardTable } from "@/components/table/card-table";
+import { CardTable, type CardRow } from "@/components/table/card-table";
 import { EditableTitle } from "@/components/shell/editable-title";
 import { InviteButton } from "@/components/shell/invite-button";
 import { WorkspaceMembers } from "@/components/shell/workspace-members";
 import { BoardSettingsSheet, type BoardCover } from "@/components/shell/board-settings-sheet";
+import type { ColumnDef } from "@/lib/trello/columns";
 
 interface BlockCanvasProps {
   boardId: string;
@@ -26,9 +27,10 @@ interface BlockCanvasProps {
   titleEditable?: boolean;
   inviteBoardId?: string;
   workspaceMemberships?: TrelloBoardMembership[];
-  tableRows?: { card: TrelloCard; creator: TrelloMember | null }[];
+  tableRows?: CardRow[];
   tableMembers?: TrelloMember[];
   tableLabels?: TrelloLabel[];
+  tableColumns?: ColumnDef[];
   cover?: BoardCover | null;
 }
 
@@ -46,6 +48,7 @@ export function BlockCanvas({
   tableRows,
   tableMembers,
   tableLabels,
+  tableColumns,
   cover: initialCover,
 }: BlockCanvasProps) {
   const [cards, setCards] = useState(initialCards);
@@ -125,6 +128,7 @@ export function BlockCanvas({
               rows={tableRows}
               members={tableMembers ?? []}
               labels={tableLabels ?? []}
+              columns={tableColumns ?? []}
               me={me}
               compact
               showTitle={false}

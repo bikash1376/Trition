@@ -3,15 +3,17 @@
 import { useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Delete02Icon } from "@hugeicons/core-free-icons";
-import { CardTable } from "@/components/table/card-table";
+import { CardTable, type CardRow } from "@/components/table/card-table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
-import type { TrelloCard, TrelloLabel, TrelloMember } from "@/lib/trello/types";
+import type { TrelloLabel, TrelloMember } from "@/lib/trello/types";
+import type { ColumnDef } from "@/lib/trello/columns";
 
 interface TableData {
-  rows: { card: TrelloCard; creator: TrelloMember | null }[];
+  rows: CardRow[];
   members: TrelloMember[];
   labels: TrelloLabel[];
+  columns: ColumnDef[];
 }
 
 interface TableBlockProps {
@@ -74,6 +76,7 @@ export function TableBlock({ cardId, listId, name, me, onDeleted }: TableBlockPr
           rows={data.rows}
           members={data.members}
           labels={data.labels}
+          columns={data.columns}
           me={me}
           compact
           headerActions={deleteAction}
