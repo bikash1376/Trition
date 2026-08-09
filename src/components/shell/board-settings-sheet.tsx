@@ -13,7 +13,10 @@ import type { TrelloLabel } from "@/lib/trello/types";
 export interface BoardCover {
   cardId: string;
   attachmentId: string;
+  heightPercent: number;
 }
+
+const COVER_HEIGHTS = [25, 40, 50] as const;
 
 interface BoardSettingsSheetProps {
   boardId: string;
@@ -63,11 +66,12 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
     const form = new FormData();
     form.append("file", file);
     form.append("homeListId", homeListId);
+    form.append("heightPercent", String(cover?.heightPercent ?? 40));
     fetch(`/api/boards/${boardId}/cover`, { method: "POST", body: form })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         setUploadingCover(false);
-        if (data) onCoverChanged({ cardId: data.card.id, attachmentId: data.attachmentId });
+        if (data) onCoverChanged({ cardId: data.card.id, attachmentId: data.attachmentId, heightPercent: data.heightPercent });
       });
   }
 
@@ -77,6 +81,16 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ homeListId }),
+    });
+  }
+
+  function setCoverHeight(heightPercent: number) {
+    if (!cover) return;
+    onCoverChanged({ ...cover, heightPercent });
+    fetch(`/api/boards/${boardId}/cover`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ homeListId, heightPercent }),
     });
   }
 
@@ -112,7 +126,23 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
                 Remove
               </Button>
             </div>
-          ) : (
+          ) : null}
+          {cover && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Height</span>
+              {COVER_HEIGHTS.map((h) => (
+                <Button
+                  key={h}
+                  variant={cover.heightPercent === h ? "secondary" : "outline"}
+                  size="xs"
+                  onClick={() => setCoverHeight(h)}
+                >
+                  {h}%
+                </Button>
+              ))}
+            </div>
+          )}
+          {!cover && (
             <Button
               variant="outline"
               size="sm"

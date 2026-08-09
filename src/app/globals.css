@@ -166,19 +166,15 @@
   }
 }
 .brand-shimmer {
-  background-image: linear-gradient(
-    100deg,
-    currentColor 40%,
-    color-mix(in oklch, currentColor 40%, white) 50%,
-    currentColor 60%
-  );
+  background-image: linear-gradient(100deg, currentColor 45%, var(--primary) 50%, currentColor 55%);
   background-size: 250% 100%;
+  background-position: 200% 0;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .brand-shimmer:hover {
-  animation: brand-shimmer 1.1s ease-in-out;
+  animation: brand-shimmer 1s ease-in-out;
 }
 
 .prose-daspace {

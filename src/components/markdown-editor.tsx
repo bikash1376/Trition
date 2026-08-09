@@ -31,6 +31,20 @@ export function MarkdownEditor({ value, onChange, onBlur, placeholder, className
     const before = value.slice(0, selectionStart);
     const selected = value.slice(selectionStart, selectionEnd) || "text";
     const after = value.slice(selectionEnd);
+
+    // Toggle: if the selection is already wrapped in this token, remove it instead of nesting another layer
+    const isWrapped = before.endsWith(token) && after.startsWith(token);
+    if (isWrapped) {
+      const newBefore = before.slice(0, before.length - token.length);
+      const newAfter = after.slice(token.length);
+      onChange(`${newBefore}${selected}${newAfter}`);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(newBefore.length, newBefore.length + selected.length);
+      });
+      return;
+    }
+
     onChange(`${before}${token}${selected}${token}${after}`);
     requestAnimationFrame(() => {
       el.focus();
@@ -42,7 +56,15 @@ export function MarkdownEditor({ value, onChange, onBlur, placeholder, className
     const el = ref.current;
     if (!el) return;
     const lineStart = value.lastIndexOf("\n", el.selectionStart - 1) + 1;
-    onChange(`${value.slice(0, lineStart)}## ${value.slice(lineStart)}`);
+    const restOfLine = value.slice(lineStart);
+
+    // Toggle: strip the heading marker if the line already has one
+    const hasHeading = restOfLine.startsWith("## ");
+    onChange(
+      hasHeading
+        ? `${value.slice(0, lineStart)}${restOfLine.slice(3)}`
+        : `${value.slice(0, lineStart)}## ${restOfLine}`,
+    );
     requestAnimationFrame(() => el.focus());
   }
 

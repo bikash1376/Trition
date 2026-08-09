@@ -17,6 +17,7 @@ import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { LabelPicker } from "@/components/table/label-picker";
 import { MemberPicker } from "@/components/table/member-picker";
 import { StatusPills } from "@/components/table/status-pills";
+import { MemberAvatar } from "@/components/table/avatar-stack";
 import { EditableTitle } from "@/components/shell/editable-title";
 import type { TrelloCard, TrelloLabel, TrelloMember } from "@/lib/trello/types";
 
@@ -42,9 +43,9 @@ interface CardTableProps {
 type SortKey = "name" | "status" | "members" | "createdBy";
 type SortDir = "asc" | "desc";
 
-const COLUMNS: { key: SortKey; label: string }[] = [
+const COLUMNS: { key: SortKey; label: string; width?: string }[] = [
   { key: "name", label: "Name" },
-  { key: "status", label: "Status" },
+  { key: "status", label: "Status", width: "w-48" },
   { key: "members", label: "Members" },
   { key: "createdBy", label: "Created By" },
 ];
@@ -266,11 +267,11 @@ export function CardTable({
             <tr className="border-b border-border bg-muted/50 text-left text-xs text-muted-foreground">
               <th className="w-8 px-2 py-2"></th>
               {COLUMNS.map((col) => (
-                <th key={col.key} className="px-3 py-2 font-medium">
+                <th key={col.key} className={`px-3 py-2 font-medium ${col.width ?? ""}`}>
                   <button
                     type="button"
                     onClick={() => toggleSort(col.key)}
-                    className="flex items-center gap-1 hover:text-foreground"
+                    className="flex items-center gap-1 whitespace-nowrap hover:text-foreground"
                   >
                     {col.label}
                     {sort?.key === col.key && (
@@ -317,14 +318,14 @@ export function CardTable({
                       card.name
                     )}
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="w-48 px-3 py-2">
                     <LabelPicker
                       cardId={card.id}
                       selected={card.labels}
                       options={labels}
                       onChange={(next) => handleLabelsChanged(card.id, next)}
                     >
-                      <div className="flex min-h-5 flex-wrap gap-1">
+                      <div className="flex min-h-5 flex-nowrap items-center gap-1">
                         <StatusPills labels={card.labels} />
                       </div>
                     </LabelPicker>
@@ -338,7 +339,14 @@ export function CardTable({
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <span className="text-muted-foreground">{creator?.fullName ?? "—"}</span>
+                    {creator ? (
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <MemberAvatar member={creator} className="h-5 w-5" />
+                        {creator.fullName.split(" ")[0]}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                 </tr>
               );

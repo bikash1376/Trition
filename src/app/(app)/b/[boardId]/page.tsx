@@ -24,6 +24,7 @@ export default async function BoardHomePage({ params }: { params: Promise<{ boar
   const coverCard = allCards.find((c) => c.name === COVER_CARD_NAME);
   const cards = allCards.filter((c) => c.name !== COVER_CARD_NAME);
   const pageNames = Object.fromEntries(pages.map((l) => [l.id, l.name]));
+  const [coverAttachmentId, coverHeight] = coverCard?.desc.split("|") ?? [];
 
   return (
     <BlockCanvas
@@ -36,7 +37,11 @@ export default async function BoardHomePage({ params }: { params: Promise<{ boar
       me={me}
       inviteBoardId={boardId}
       workspaceMemberships={memberships}
-      cover={coverCard ? { cardId: coverCard.id, attachmentId: coverCard.desc } : null}
+      cover={
+        coverCard
+          ? { cardId: coverCard.id, attachmentId: coverAttachmentId, heightPercent: Number(coverHeight) || 40 }
+          : null
+      }
     />
   );
 }
