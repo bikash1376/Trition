@@ -47,7 +47,7 @@ export function LobbyButton({ boardId }: { boardId: string }) {
         In lobby
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 p-3">
-        <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Recent activity</p>
+        <p className="font-label mb-2 text-sm tracking-wide text-muted-foreground">Recent activity</p>
         {entries === null && <p className="text-sm text-muted-foreground">Loading…</p>}
         {entries?.length === 0 && <p className="text-sm text-muted-foreground">No recent activity yet.</p>}
         {latest && (

@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useSidebarRefresh } from "@/lib/sidebar-refresh";
 
 export function CreateWorkspaceButton() {
   const router = useRouter();
+  const { refreshSidebar } = useSidebarRefresh();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
@@ -30,6 +32,7 @@ export function CreateWorkspaceButton() {
     const { board } = await res.json();
     setOpen(false);
     setName("");
+    refreshSidebar();
     router.push(`/b/${board.id}`);
   }
 
@@ -39,7 +42,7 @@ export function CreateWorkspaceButton() {
         render={
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-sidebar-accent/60"
+            className="flex mt-1 w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-sidebar-accent/60"
           />
         }
       >

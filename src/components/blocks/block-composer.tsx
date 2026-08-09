@@ -5,6 +5,7 @@ import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { AiMagicIcon, BookmarkIcon, File01Icon, Image02Icon, Table01Icon, TextIcon } from "@hugeicons/core-free-icons";
 import { serializeBlock } from "@/lib/trello/blocks";
 import { generateLorem } from "@/lib/lorem";
+import { useSidebarRefresh } from "@/lib/sidebar-refresh";
 import type { TrelloCard, TrelloList } from "@/lib/trello/types";
 
 type PendingType = "page" | "bookmark" | "image" | "table" | "lorem" | null;
@@ -45,6 +46,7 @@ export function BlockComposer({
   onPending,
   onPendingResolved,
 }: BlockComposerProps) {
+  const { refreshSidebar } = useSidebarRefresh();
   const [value, setValue] = useState("");
   const [pendingType, setPendingType] = useState<PendingType>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -109,7 +111,12 @@ export function BlockComposer({
       body: JSON.stringify({ type: "page", name, boardId }),
     })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => data && onCreated(data.card, data.list));
+      .then((data) => {
+        if (data) {
+          onCreated(data.card, data.list);
+          refreshSidebar();
+        }
+      });
   }
 
   function submitTable(name: string) {
@@ -126,7 +133,10 @@ export function BlockComposer({
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         onPendingResolved?.(tempId);
-        if (data) onCreated(data.card, data.list);
+        if (data) {
+          onCreated(data.card, data.list);
+          refreshSidebar();
+        }
       });
   }
 

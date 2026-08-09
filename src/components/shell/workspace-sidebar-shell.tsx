@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Archive04Icon, CorporateIcon, Home01Icon, Logout03Icon, UserLock01Icon } from "@hugeicons/core-free-icons";
+import {
+  Archive04Icon,
+  CorporateIcon,
+  GlobeIcon,
+  Home01Icon,
+  Logout03Icon,
+  UserLock01Icon,
+} from "@hugeicons/core-free-icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +22,15 @@ import { CreateWorkspaceButton } from "@/components/shell/create-workspace-butto
 import { NewPageButton } from "@/components/shell/new-page-button";
 import { AboutDialog } from "@/components/shell/about-dialog";
 import { SettingsDialog } from "@/components/shell/settings-dialog";
+import { useSidebarRefresh } from "@/lib/sidebar-refresh";
 import type { TrelloBoard, TrelloList, TrelloMember } from "@/lib/trello/types";
+
+function boardIcon(board: TrelloBoard) {
+  const level = board.prefs?.permissionLevel;
+  if (level === "public") return GlobeIcon;
+  if (level === "org") return CorporateIcon;
+  return UserLock01Icon;
+}
 
 interface WorkspaceSidebarShellProps {
   me: TrelloMember;
@@ -41,13 +56,24 @@ function deriveContext(pathname: string) {
   };
 }
 
-export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps) {
+export function WorkspaceSidebarShell({ me, boards: initialBoards }: WorkspaceSidebarShellProps) {
   const pathname = usePathname();
   const context = deriveContext(pathname);
+  const { nonce } = useSidebarRefresh();
 
+  const [boards, setBoards] = useState(initialBoards);
   const [pagesData, setPagesData] = useState<{ contextKey: string; lists: TrelloList[]; boardId: string } | null>(
     null,
   );
+
+  useEffect(() => {
+    if (nonce === 0) return;
+    fetch("/api/boards")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.boards) setBoards(data.boards);
+      });
+  }, [nonce]);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +85,7 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
     return () => {
       cancelled = true;
     };
-  }, [context.pagesUrl]);
+  }, [context.pagesUrl, nonce]);
 
   const loadingPages = !pagesData || pagesData.contextKey !== context.pagesUrl;
   const pages = loadingPages ? null : pagesData;
@@ -92,9 +118,7 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
       <ScrollArea className="flex-1">
         <div className="flex h-full flex-col">
           <div className="px-2 py-3">
-            <p className="px-2 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-              Workspaces
-            </p>
+            <p className="font-label px-2 pb-1.5 text-xs tracking-wide text-muted-foreground">Workspaces</p>
             <nav className="flex flex-col gap-1">
               {boards.map((board) => (
                 <Link
@@ -106,11 +130,7 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
                       : "hover:bg-sidebar-accent/60"
                   }`}
                 >
-                  <HugeiconsIcon
-                    icon={board.prefs?.permissionLevel === "org" ? CorporateIcon : UserLock01Icon}
-                    size={16}
-                    className="shrink-0"
-                  />
+                  <HugeiconsIcon icon={boardIcon(board)} size={16} className="shrink-0" />
                   <span className="min-w-0 flex-1 truncate">{board.name}</span>
                   <NavLinkSpinner />
                 </Link>
@@ -119,7 +139,7 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
           </div>
 
           <div className="flex flex-1 flex-col px-2 py-3">
-            <p className="px-2 pb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Pages</p>
+            <p className="font-label px-2 pb-1.5 text-xs tracking-wide text-muted-foreground">Pages</p>
             {loadingPages || !pages ? (
               <div className="flex flex-col gap-1.5 px-2 py-1">
                 <Skeleton className="h-5 w-full" />
@@ -151,6 +171,13 @@ export function WorkspaceSidebarShell({ me, boards }: WorkspaceSidebarShellProps
                     onDeleted={(deletedListId) =>
                       setPagesData((prev) =>
                         prev ? { ...prev, lists: prev.lists.filter((l) => l.id !== deletedListId) } : prev,
+                      )
+                    }
+                    onRenamed={(renamedListId, name) =>
+                      setPagesData((prev) =>
+                        prev
+                          ? { ...prev, lists: prev.lists.map((l) => (l.id === renamedListId ? { ...l, name } : l)) }
+                          : prev,
                       )
                     }
                   />

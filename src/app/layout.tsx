@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Yesteryear } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader, Yesteryear } from "next/font/google";
 import Script from "next/script";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { THEME_STORAGE_KEY } from "@/lib/theme-constants";
+import { appUrl } from "@/lib/trello/env";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,9 +22,37 @@ const yesteryear = Yesteryear({
   weight: "400",
 });
 
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+});
+
+const DESCRIPTION = "A Notion-style workspace that uses Trello as its database and storage.";
+
 export const metadata: Metadata = {
-  title: "Trition",
-  description: "A Notion-like workspace backed entirely by Trello.",
+  metadataBase: new URL(appUrl()),
+  title: {
+    default: "Trition",
+    template: "%s · Trition",
+  },
+  description: DESCRIPTION,
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+  },
+  openGraph: {
+    title: "Trition",
+    description: DESCRIPTION,
+    siteName: "Trition",
+    type: "website",
+    images: [{ url: "/banner.png" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Trition",
+    description: DESCRIPTION,
+    images: ["/banner.png"],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -31,7 +60,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`dark ${geistSans.variable} ${geistMono.variable} ${yesteryear.variable} h-full antialiased`}
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${yesteryear.variable} ${newsreader.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Script id="theme-init" strategy="beforeInteractive">

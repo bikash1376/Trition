@@ -13,6 +13,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ boa
     const { settings } = parseWorkspaceSettings(board.desc);
     return NextResponse.json({
       settings,
+      url: board.url,
       prefs: {
         permissionLevel: board.prefs?.permissionLevel ?? "private",
         comments: board.prefs?.comments ?? "members",

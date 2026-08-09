@@ -81,6 +81,10 @@ export function updateBoard(boardId: string, params: Record<string, string>, tok
   return trelloFetch<TrelloBoard>(`/boards/${boardId}`, token, params, "PUT");
 }
 
+export function deleteBoard(boardId: string, token: string) {
+  return trelloFetch<void>(`/boards/${boardId}`, token, {}, "DELETE");
+}
+
 export function getBoardActions(boardId: string, token: string) {
   return cached(`board-actions:${boardId}`, 15_000, () =>
     trelloFetch<TrelloBoardAction[]>(`/boards/${boardId}/actions`, token, {

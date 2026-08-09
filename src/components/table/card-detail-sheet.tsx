@@ -261,7 +261,7 @@ export function CardDetailSheet({
 
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Description</p>
+                  <p className="font-label text-sm tracking-wide text-muted-foreground">Description</p>
                   {descStatus !== "idle" && (
                     <span className="text-xs text-muted-foreground">
                       {descStatus === "pending" ? "Saving…" : "Saved"}
@@ -280,7 +280,7 @@ export function CardDetailSheet({
               <Separator />
 
               <div className="flex flex-col gap-3">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Comments</p>
+                <p className="font-label text-sm tracking-wide text-muted-foreground">Comments</p>
                 <div className="flex items-end gap-2">
                   <Textarea
                     value={commentText}

@@ -13,3 +13,7 @@ export async function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>
   store.set(key, { value, expires: Date.now() + ttlMs });
   return value;
 }
+
+export function invalidate(key: string) {
+  store.delete(key);
+}

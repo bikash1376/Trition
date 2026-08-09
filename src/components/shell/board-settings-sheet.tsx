@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Add01Icon, Image02Icon, Settings02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Copy01Icon, Image02Icon, Settings02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { LabelManagerRow } from "@/components/shell/label-manager-row";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import { useSidebarRefresh } from "@/lib/sidebar-refresh";
 import type { TrelloLabel } from "@/lib/trello/types";
 
 export interface BoardCover {
@@ -37,12 +40,15 @@ const COMMENT_OPTIONS: { value: BoardPrefs["comments"]; label: string }[] = [
 
 interface BoardSettingsSheetProps {
   boardId: string;
+  boardName: string;
   homeListId: string;
   cover: BoardCover | null;
   onCoverChanged: (cover: BoardCover | null) => void;
 }
 
-export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged }: BoardSettingsSheetProps) {
+export function BoardSettingsSheet({ boardId, boardName, homeListId, cover, onCoverChanged }: BoardSettingsSheetProps) {
+  const router = useRouter();
+  const { refreshSidebar } = useSidebarRefresh();
   const [open, setOpen] = useState(false);
   const [labels, setLabels] = useState<TrelloLabel[] | null>(null);
   const [creating, setCreating] = useState(false);
@@ -51,6 +57,10 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
   const [prefs, setPrefs] = useState<BoardPrefs | null>(null);
+  const [boardUrl, setBoardUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!open || labels !== null) return;
@@ -67,8 +77,26 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
         if (!data) return;
         setSettings(data.settings);
         setPrefs(data.prefs);
+        setBoardUrl(data.url ?? null);
       });
   }, [open, boardId, settings]);
+
+  function copyLink() {
+    if (!boardUrl) return;
+    navigator.clipboard.writeText(boardUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function deleteWorkspace() {
+    setDeleting(true);
+    const res = await fetch(`/api/boards/${boardId}`, { method: "DELETE" });
+    setDeleting(false);
+    if (!res.ok) return;
+    setOpen(false);
+    refreshSidebar();
+    router.push("/home");
+  }
 
   function patchSettings(body: Record<string, unknown>) {
     fetch(`/api/boards/${boardId}/settings`, {
@@ -185,7 +213,7 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
           <SheetTitle>Board Settings</SheetTitle>
         </SheetHeader>
         <div className="flex flex-col gap-3 px-4 pb-4">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Cover image</p>
+          <p className="font-label text-sm tracking-wide text-muted-foreground">Cover image</p>
           {cover ? (
             <div className="relative h-24 w-full overflow-hidden rounded-md border border-border">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -246,7 +274,7 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
           <Separator />
 
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Labels</p>
+            <p className="font-label text-sm tracking-wide text-muted-foreground">Labels</p>
             <Button variant="ghost" size="xs" className="gap-1 text-muted-foreground" onClick={addLabel} disabled={creating}>
               <HugeiconsIcon icon={Add01Icon} size={12} />
               New label
@@ -262,9 +290,7 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
 
           <Separator />
 
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            General (compatible with Trello)
-          </p>
+          <p className="font-label text-sm tracking-wide text-muted-foreground">General (compatible with Trello)</p>
           {!prefs ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
@@ -287,6 +313,16 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
                     Public
                   </Button>
                 </div>
+              </div>
+              {prefs.permissionLevel === "public" && boardUrl && (
+                <div className="flex items-center gap-1.5">
+                  <Input readOnly value={boardUrl} className="h-7 text-xs" onFocus={(e) => e.target.select()} />
+                  <Button variant="outline" size="icon-xs" title="Copy public link" onClick={copyLink}>
+                    <HugeiconsIcon icon={copied ? Tick02Icon : Copy01Icon} size={12} />
+                  </Button>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2">
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm">Who can comment</span>
@@ -320,7 +356,7 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
 
           <Separator />
 
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">App settings (Trition)</p>
+          <p className="font-label text-sm tracking-wide text-muted-foreground">App settings (Trition)</p>
           {!settings ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
@@ -336,6 +372,32 @@ export function BoardSettingsSheet({ boardId, homeListId, cover, onCoverChanged 
             </div>
           )}
           <p className="text-xs text-muted-foreground">More board settings will show up here over time.</p>
+
+          <Separator />
+
+          <p className="font-label text-sm tracking-wide text-destructive">Danger zone</p>
+          <div className="flex flex-col gap-2 rounded-md border border-destructive/30 p-3">
+            <p className="text-sm font-medium">Delete this workspace</p>
+            <p className="text-xs text-muted-foreground">
+              Permanently deletes &quot;{boardName}&quot; from Trello — every page, table, card, and attachment in it.
+              This cannot be undone.
+            </p>
+            <Input
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              placeholder={`Type "${boardName}" to confirm`}
+              className="h-8 text-sm"
+            />
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-fit"
+              disabled={deleteConfirmName !== boardName || deleting}
+              onClick={deleteWorkspace}
+            >
+              {deleting ? "Deleting…" : "Delete workspace forever"}
+            </Button>
+          </div>
         </div>
       </SheetContent>
       <ConfirmDeleteDialog

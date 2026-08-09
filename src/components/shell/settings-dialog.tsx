@@ -19,7 +19,7 @@ export function SettingsDialog() {
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          {/* <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Appearance</p> */}
+          {/* <p className="font-label text-sm tracking-wide text-muted-foreground">Appearance</p> */}
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm">Theme</span>
             <div className="flex gap-1">

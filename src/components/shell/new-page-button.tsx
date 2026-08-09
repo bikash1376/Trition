@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useSidebarRefresh } from "@/lib/sidebar-refresh";
 
 interface NewPageButtonProps {
   boardId: string;
@@ -18,6 +19,7 @@ interface NewPageButtonProps {
 
 export function NewPageButton({ boardId, pageHrefBase, trigger, children }: NewPageButtonProps) {
   const router = useRouter();
+  const { refreshSidebar } = useSidebarRefresh();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -35,8 +37,8 @@ export function NewPageButton({ boardId, pageHrefBase, trigger, children }: NewP
     const { list } = await res.json();
     setOpen(false);
     setName("");
+    refreshSidebar();
     router.push(`${pageHrefBase}/l/${list.id}`);
-    router.refresh();
   }
 
   return (

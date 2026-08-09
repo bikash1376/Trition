@@ -114,6 +114,7 @@ export function BlockCanvas({
               <InviteButton boardId={inviteBoardId} />
               <BoardSettingsSheet
                 boardId={inviteBoardId}
+                boardName={pageTitle}
                 homeListId={listId}
                 cover={cover}
                 onCoverChanged={setCover}
