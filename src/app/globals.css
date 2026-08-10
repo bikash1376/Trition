@@ -311,31 +311,45 @@
 }
 
 /* Colors/radius match the hover state of a /page link (rounded-md + accent).
-   The border ring itself is the highlight color, same as the fill — a
-   rotating white-at-50%-opacity glint sweeps through it (dark & terminal
-   only). Technique: mark's own background IS the rotating gradient; ::after
-   sits inset by the border width with a solid fill, so only a thin ring of
-   the gradient shows around it — no radial mask needed, since a conic
-   gradient's color only depends on angle, never radius. */
+   The fill never changes. A rotating border ring (highlight color, with a
+   white-at-50%-opacity segment sweeping through it) sits behind it — dark &
+   terminal only. An element's own background always paints at the very
+   bottom of its own stacking context, so a same-sized pseudo can never sit
+   behind it; the fill has to be its own layer (::after) painted above a
+   larger ring layer (::before) for only the rim to peek out. `z-index: 0`
+   scopes both pseudos to this element's own local stacking context. */
 .prose-daspace mark {
   position: relative;
+  z-index: 0;
   display: inline-block;
   border-radius: var(--radius-md);
   padding: 0.2em 0.5em;
   color: var(--accent-foreground);
-  background-color: var(--accent);
   --mark-fill: var(--accent);
   --mark-border-color: var(--accent);
 }
 .theme-terminal .prose-daspace mark {
   color: #ffffff;
-  background-color: #1a7539;
   --mark-fill: #1a7539;
   --mark-border-color: #1a7539;
 }
 
-.dark .prose-daspace mark,
-.theme-terminal .prose-daspace mark {
+.prose-daspace mark::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background-color: var(--mark-fill);
+}
+
+.dark .prose-daspace mark::before,
+.theme-terminal .prose-daspace mark::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  inset: -1.5px;
+  border-radius: inherit;
   background: conic-gradient(
     from var(--mark-border-angle),
     var(--mark-border-color),
@@ -343,15 +357,6 @@
     var(--mark-border-color)
   );
   animation: mark-border-spin 3s linear infinite;
-}
-.dark .prose-daspace mark::after,
-.theme-terminal .prose-daspace mark::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: 1.5px;
-  border-radius: calc(var(--radius-md) - 1.5px);
-  background-color: var(--mark-fill);
 }
 
 .prose-daspace u {
