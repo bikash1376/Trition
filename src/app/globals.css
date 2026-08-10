@@ -310,42 +310,48 @@
   }
 }
 
-/* Colors/radius match the hover state of a /page link (rounded-md + accent) */
+/* Colors/radius match the hover state of a /page link (rounded-md + accent).
+   The border ring itself is the highlight color, same as the fill — a
+   rotating white-at-50%-opacity glint sweeps through it (dark & terminal
+   only). Technique: mark's own background IS the rotating gradient; ::after
+   sits inset by the border width with a solid fill, so only a thin ring of
+   the gradient shows around it — no radial mask needed, since a conic
+   gradient's color only depends on angle, never radius. */
 .prose-daspace mark {
   position: relative;
   display: inline-block;
-  overflow: hidden;
-  background-color: var(--accent);
-  color: var(--accent-foreground);
   border-radius: var(--radius-md);
   padding: 0.2em 0.5em;
+  color: var(--accent-foreground);
+  background-color: var(--accent);
+  --mark-fill: var(--accent);
+  --mark-border-color: var(--accent);
 }
 .theme-terminal .prose-daspace mark {
-  background-color: #1a7539;
   color: #ffffff;
+  background-color: #1a7539;
+  --mark-fill: #1a7539;
+  --mark-border-color: #1a7539;
 }
 
-/* A soft specular sheen tracing the pill's rounded edge (not a border/ring, and
-   not a spotlight radiating from the center) — dark & terminal only. A conic
-   gradient always fans out from its own center, so a radial mask blanks out
-   the middle, leaving only a moving glow near the rim. */
-.dark .prose-daspace mark::before,
-.theme-terminal .prose-daspace mark::before {
-  content: "";
-  position: absolute;
-  inset: 0;
+.dark .prose-daspace mark,
+.theme-terminal .prose-daspace mark {
   background: conic-gradient(
     from var(--mark-border-angle),
-    transparent 0deg,
-    rgba(255, 255, 255, 0.25) 10deg,
-    transparent 28deg,
-    transparent 360deg
+    var(--mark-border-color),
+    rgba(255, 255, 255, 0.5),
+    var(--mark-border-color)
   );
-  mask: radial-gradient(ellipse, transparent 52%, black 68%, black 84%, transparent 98%);
-  -webkit-mask: radial-gradient(ellipse, transparent 52%, black 68%, black 84%, transparent 98%);
   animation: mark-border-spin 3s linear infinite;
-  mix-blend-mode: screen;
-  pointer-events: none;
+}
+.dark .prose-daspace mark::after,
+.theme-terminal .prose-daspace mark::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 1.5px;
+  border-radius: calc(var(--radius-md) - 1.5px);
+  background-color: var(--mark-fill);
 }
 
 .prose-daspace u {
