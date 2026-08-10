@@ -52,8 +52,14 @@ export function BlockComposer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const isSlashCommand = !pendingType && value.startsWith("/");
-  const query = isSlashCommand ? value.slice(1).toLowerCase() : "";
+  // Slash-commands trigger off the current line only, so "/" still works after
+  // typing some text and pressing Enter, not just at the very start of the input.
+  const lastNewlineIdx = value.lastIndexOf("\n");
+  const currentLine = lastNewlineIdx >= 0 ? value.slice(lastNewlineIdx + 1) : value;
+  const precedingText = lastNewlineIdx >= 0 ? value.slice(0, lastNewlineIdx) : "";
+
+  const isSlashCommand = !pendingType && currentLine.startsWith("/");
+  const query = isSlashCommand ? currentLine.slice(1).toLowerCase() : "";
   const filteredOptions = isSlashCommand ? OPTIONS.filter((o) => o.label.toLowerCase().includes(query)) : [];
   const menuOpen = isSlashCommand && filteredOptions.length > 0;
 
@@ -188,9 +194,11 @@ export function BlockComposer({
 
   function selectOption(option: BlockOption) {
     if (option.type === "text") {
-      setValue("");
+      // Dismiss the slash-command on this line only — keep any text typed on earlier lines
+      setValue(precedingText ? `${precedingText}\n` : "");
       return;
     }
+    submitText(precedingText); // commit text typed before this line as its own block
     setPendingType(option.type);
     setValue("");
   }
@@ -235,9 +243,10 @@ export function BlockComposer({
     }
     if (e.key !== "Enter") return;
     // "/lorem25" + Enter generates directly, bypassing the menu
-    const loremMatch = value.match(LOREM_SLASH_RE);
+    const loremMatch = currentLine.match(LOREM_SLASH_RE);
     if (loremMatch) {
       e.preventDefault();
+      submitText(precedingText); // commit text typed before this line as its own block
       submitLorem(loremMatch[1]);
       return;
     }

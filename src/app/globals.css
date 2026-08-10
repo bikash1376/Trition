@@ -172,7 +172,7 @@
 /* "terminal" — Cousine, black-on-green hacker theme */
 .theme-terminal {
   --background: #060a07;
-  --foreground: #c6d98f;
+  --foreground: oklch(86.812% 0.2166 151.317 / 0.893);  
   --card: #0f130a;
   --card-foreground: #c6d98f;
   --popover: #0f130a;
@@ -282,7 +282,7 @@
   @apply text-base;
 }
 .prose-daspace p {
-  @apply mb-1;
+  @apply mb-2;
 }
 .prose-daspace a {
   @apply text-primary underline underline-offset-4;
@@ -298,4 +298,18 @@
 }
 .prose-daspace strong {
   @apply font-semibold;
+}
+.prose-daspace mark {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+  border-radius: 12px;
+  padding: 0.2em 0.5em;
+}
+.prose-daspace u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--primary) 30%, transparent);
 }

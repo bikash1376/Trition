@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { parseBlock, serializeBlock } from "@/lib/trello/blocks";
 import type { TrelloBoardMembership, TrelloCard, TrelloLabel, TrelloList, TrelloMember } from "@/lib/trello/types";
 import { BlockComposer } from "@/components/blocks/block-composer";
@@ -8,7 +8,7 @@ import { BookmarkBlock } from "@/components/blocks/bookmark-block";
 import { ImageBlock } from "@/components/blocks/image-block";
 import { PageBlock } from "@/components/blocks/page-block";
 import { TableBlock } from "@/components/blocks/table-block";
-import { TextBlock } from "@/components/blocks/text-block";
+import { TextBlock, type TextBlockHandle } from "@/components/blocks/text-block";
 import { CardTable, type CardRow } from "@/components/table/card-table";
 import { EditableTitle } from "@/components/shell/editable-title";
 import { InviteButton } from "@/components/shell/invite-button";
@@ -56,6 +56,51 @@ export function BlockCanvas({
   const [pageNames, setPageNames] = useState(initialPageNames);
   const [pending, setPending] = useState<{ id: string; kind: "table" | "bookmark" }[]>([]);
   const [cover, setCover] = useState<BoardCover | null>(initialCover ?? null);
+  const [allSelected, setAllSelected] = useState(false);
+  const textBlockRefs = useRef(new Map<string, TextBlockHandle>());
+
+  // Backspace at the start of a text block merges it into the previous text
+  // block (Google-Docs-style paragraph joining). Non-text neighbors are a no-op.
+  function handleMergeUp(cardId: string, content: string): boolean {
+    const idx = cards.findIndex((c) => c.id === cardId);
+    if (idx <= 0) return false;
+    const prevCard = cards[idx - 1];
+    if (parseBlock(prevCard.desc).type !== "text") return false;
+    const prevHandle = textBlockRefs.current.get(prevCard.id);
+    if (!prevHandle) return false; // ref not registered yet — fail safe, no-op
+    prevHandle.mergeAppend(content);
+    setCards((prev) => prev.filter((c) => c.id !== cardId));
+    fetch(`/api/blocks/${cardId}`, { method: "DELETE" });
+    return true;
+  }
+
+  // A 2nd Ctrl/Cmd+A (after a block's text is already fully selected) escalates
+  // to "select every block on the page"; Backspace/Delete then deletes them all.
+  useEffect(() => {
+    if (!allSelected) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setAllSelected(false);
+        return;
+      }
+      if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        const ids = cards.map((c) => c.id);
+        setCards([]);
+        ids.forEach((id) => fetch(`/api/blocks/${id}`, { method: "DELETE" }));
+        setAllSelected(false);
+      }
+    }
+    function onMouseDown() {
+      setAllSelected(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("mousedown", onMouseDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("mousedown", onMouseDown);
+    };
+  }, [allSelected, cards]);
 
   function handleCreated(card: TrelloCard, list?: TrelloList) {
     setCards((prev) => [...prev, card]);
@@ -142,10 +187,10 @@ export function BlockCanvas({
         <div className="flex w-full max-w-3xl flex-col gap-1">
           {cards.map((card) => {
             const block = parseBlock(card.desc);
+            let content: ReactNode;
             if (block.type === "page" && block.ref) {
-              return (
+              content = (
                 <PageBlock
-                  key={card.id}
                   cardId={card.id}
                   listId={block.ref}
                   href={`${pageHrefBase}/l/${block.ref}`}
@@ -154,11 +199,9 @@ export function BlockCanvas({
                   onDeleted={handleBlockDeleted}
                 />
               );
-            }
-            if (block.type === "table" && block.ref && me) {
-              return (
+            } else if (block.type === "table" && block.ref && me) {
+              content = (
                 <TableBlock
-                  key={card.id}
                   cardId={card.id}
                   listId={block.ref}
                   name={pageNames[block.ref] ?? card.name}
@@ -166,11 +209,9 @@ export function BlockCanvas({
                   onDeleted={handleBlockDeleted}
                 />
               );
-            }
-            if (block.type === "bookmark" && block.ref) {
-              return (
+            } else if (block.type === "bookmark" && block.ref) {
+              content = (
                 <BookmarkBlock
-                  key={card.id}
                   cardId={card.id}
                   url={block.ref}
                   title={card.name}
@@ -178,20 +219,32 @@ export function BlockCanvas({
                   onDeleted={handleBlockDeleted}
                 />
               );
-            }
-            if (block.type === "image") {
-              return (
-                <ImageBlock
-                  key={card.id}
+            } else if (block.type === "image") {
+              content = (
+                <ImageBlock cardId={card.id} attachmentId={block.ref} alt={card.name} onDeleted={handleBlockDeleted} />
+              );
+            } else {
+              content = (
+                <TextBlock
+                  ref={(handle) => {
+                    if (handle) textBlockRefs.current.set(card.id, handle);
+                    else textBlockRefs.current.delete(card.id);
+                  }}
                   cardId={card.id}
-                  attachmentId={block.ref}
-                  alt={card.name}
+                  initialContent={block.content}
                   onDeleted={handleBlockDeleted}
+                  onMergeUp={(text) => handleMergeUp(card.id, text)}
+                  onSelectAllEscalate={() => setAllSelected(true)}
                 />
               );
             }
             return (
-              <TextBlock key={card.id} cardId={card.id} initialContent={block.content} onDeleted={handleBlockDeleted} />
+              <div
+                key={card.id}
+                className={allSelected ? "rounded-md ring-2 ring-primary/70 ring-offset-2 ring-offset-background" : undefined}
+              >
+                {content}
+              </div>
             );
           })}
 

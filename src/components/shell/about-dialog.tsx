@@ -5,7 +5,7 @@ import { MoreHorizontalIcon } from "@hugeicons/core-free-icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const SOURCE_URL = "https://github.com/bikash1376/trotion";
+const SOURCE_URL = "https://github.com/bikash1376/trition";
 
 export function AboutDialog() {
   return (

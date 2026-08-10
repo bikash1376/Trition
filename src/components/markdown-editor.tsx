@@ -1,11 +1,35 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Heading01Icon, TextBoldIcon, TextItalicIcon, TextStrikethroughIcon } from "@hugeicons/core-free-icons";
+import {
+  Heading01Icon,
+  HighlighterIcon,
+  TextBoldIcon,
+  TextItalicIcon,
+  TextStrikethroughIcon,
+  TextUnderlineIcon,
+} from "@hugeicons/core-free-icons";
 import { expandLoremAtCursor } from "@/lib/lorem";
+
+// GFM has no native underline/highlight syntax, so those marks round-trip as raw
+// <u>/<mark> tags via rehype-raw. Since this app supports public workspace
+// sharing, raw HTML must be sanitized (not just passed through) to avoid a
+// stored-XSS hole from arbitrary card content — only allowlist the two tags we
+// actually emit, everything else keeps the library's default safe behavior.
+const daspaceSanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), "mark", "u"],
+};
+
+export interface MarkdownEditorHandle {
+  /** Enters edit mode if needed, focuses the textarea, and places the caret. */
+  focus(cursorPos?: number): void;
+}
 
 interface MarkdownEditorProps {
   value: string;
@@ -13,6 +37,10 @@ interface MarkdownEditorProps {
   onBlur?: () => void;
   placeholder?: string;
   className?: string;
+  /** Return true if the caller handled it (e.g. merged into the previous block). */
+  onBackspaceAtStart?: () => boolean;
+  /** Fired on a 2nd Ctrl/Cmd+A press once this block's text is already fully selected. */
+  onSelectAllEscalate?: () => void;
 }
 
 function resize(el: HTMLTextAreaElement) {
@@ -20,23 +48,62 @@ function resize(el: HTMLTextAreaElement) {
   el.style.height = `${el.scrollHeight}px`;
 }
 
-export function MarkdownEditor({ value, onChange, onBlur, placeholder, className }: MarkdownEditorProps) {
+export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(function MarkdownEditor(
+  { value, onChange, onBlur, placeholder, className, onBackspaceAtStart, onSelectAllEscalate },
+  ref,
+) {
   const [editing, setEditing] = useState(false);
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pendingCaretRef = useRef<number | null>(null);
 
-  function wrapSelection(token: string) {
-    const el = ref.current;
+  useImperativeHandle(
+    ref,
+    () => ({
+      focus(cursorPos) {
+        const pos = cursorPos ?? value.length;
+        if (editing) {
+          const el = textareaRef.current;
+          el?.focus();
+          el?.setSelectionRange(pos, pos);
+          return;
+        }
+        pendingCaretRef.current = pos;
+        setEditing(true);
+      },
+    }),
+    [editing, value],
+  );
+
+  // The textarea doesn't exist until `editing` flips true and this re-renders,
+  // so a pending caret request from `focus()` is applied here once it mounts.
+  useEffect(() => {
+    if (!editing || pendingCaretRef.current === null) return;
+    const pos = pendingCaretRef.current;
+    pendingCaretRef.current = null;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(pos, pos);
+    resize(el);
+  }, [editing]);
+
+  function wrapSelection(open: string, close: string = open) {
+    const el = textareaRef.current;
     if (!el) return;
     const { selectionStart, selectionEnd } = el;
     const before = value.slice(0, selectionStart);
     const selected = value.slice(selectionStart, selectionEnd) || "text";
     const after = value.slice(selectionEnd);
 
+    // Raw HTML tags don't reliably round-trip across a markdown paragraph break
+    if (open.startsWith("<") && selected.includes("\n\n")) return;
+
     // Toggle: if the selection is already wrapped in this token, remove it instead of nesting another layer
-    const isWrapped = before.endsWith(token) && after.startsWith(token);
+    const isWrapped = before.endsWith(open) && after.startsWith(close);
     if (isWrapped) {
-      const newBefore = before.slice(0, before.length - token.length);
-      const newAfter = after.slice(token.length);
+      const newBefore = before.slice(0, before.length - open.length);
+      const newAfter = after.slice(close.length);
       onChange(`${newBefore}${selected}${newAfter}`);
       requestAnimationFrame(() => {
         el.focus();
@@ -45,15 +112,15 @@ export function MarkdownEditor({ value, onChange, onBlur, placeholder, className
       return;
     }
 
-    onChange(`${before}${token}${selected}${token}${after}`);
+    onChange(`${before}${open}${selected}${close}${after}`);
     requestAnimationFrame(() => {
       el.focus();
-      el.setSelectionRange(selectionStart + token.length, selectionStart + token.length + selected.length);
+      el.setSelectionRange(selectionStart + open.length, selectionStart + open.length + selected.length);
     });
   }
 
   function insertHeading() {
-    const el = ref.current;
+    const el = textareaRef.current;
     if (!el) return;
     const lineStart = value.lastIndexOf("\n", el.selectionStart - 1) + 1;
     const restOfLine = value.slice(lineStart);
@@ -69,8 +136,24 @@ export function MarkdownEditor({ value, onChange, onBlur, placeholder, className
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key !== " " && e.key !== "Tab") return;
     const el = e.currentTarget;
+
+    if ((e.key === "a" || e.key === "A") && (e.ctrlKey || e.metaKey)) {
+      const alreadyFullySelected =
+        el.value.length > 0 && el.selectionStart === 0 && el.selectionEnd === el.value.length;
+      if (alreadyFullySelected && onSelectAllEscalate) {
+        e.preventDefault();
+        onSelectAllEscalate();
+      }
+      return;
+    }
+
+    if (e.key === "Backspace" && el.selectionStart === 0 && el.selectionEnd === 0 && onBackspaceAtStart) {
+      if (onBackspaceAtStart()) e.preventDefault();
+      return;
+    }
+
+    if (e.key !== " " && e.key !== "Tab") return;
     const expanded = expandLoremAtCursor(el.value, el.selectionStart);
     if (!expanded) return;
     e.preventDefault();
@@ -82,12 +165,31 @@ export function MarkdownEditor({ value, onChange, onBlur, placeholder, className
     });
   }
 
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const text = e.clipboardData.getData("text/plain");
+    if (!/\n{3,}/.test(text)) return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    const normalized = text.replace(/\n{3,}/g, "\n\n");
+    const { selectionStart, selectionEnd } = el;
+    const next = value.slice(0, selectionStart) + normalized + value.slice(selectionEnd);
+    const caret = selectionStart + normalized.length;
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(caret, caret);
+      resize(el);
+    });
+  }
+
   if (!editing) {
     return (
       <div onClick={() => setEditing(true)} className={`min-h-6 cursor-text ${className ?? ""}`}>
         {value.trim() ? (
           <div className="prose-daspace">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, daspaceSanitizeSchema]]}>
+              {value}
+            </ReactMarkdown>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">{placeholder}</p>
@@ -98,43 +200,61 @@ export function MarkdownEditor({ value, onChange, onBlur, placeholder, className
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-0.5">
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => wrapSelection("**")}
-          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <HugeiconsIcon icon={TextBoldIcon} size={13} />
-        </button>
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => wrapSelection("*")}
-          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <HugeiconsIcon icon={TextItalicIcon} size={13} />
-        </button>
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => wrapSelection("~~")}
-          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <HugeiconsIcon icon={TextStrikethroughIcon} size={13} />
-        </button>
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={insertHeading}
-          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <HugeiconsIcon icon={Heading01Icon} size={13} />
-        </button>
-      </div>
+      {hasSelection && (
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => wrapSelection("**")}
+            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <HugeiconsIcon icon={TextBoldIcon} size={13} />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => wrapSelection("*")}
+            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <HugeiconsIcon icon={TextItalicIcon} size={13} />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => wrapSelection("~~")}
+            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <HugeiconsIcon icon={TextStrikethroughIcon} size={13} />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => wrapSelection("<u>", "</u>")}
+            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <HugeiconsIcon icon={TextUnderlineIcon} size={13} />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => wrapSelection("<mark>", "</mark>")}
+            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <HugeiconsIcon icon={HighlighterIcon} size={13} />
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={insertHeading}
+            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <HugeiconsIcon icon={Heading01Icon} size={13} />
+          </button>
+        </div>
+      )}
       <textarea
         ref={(el) => {
-          ref.current = el;
+          textareaRef.current = el;
           if (el) resize(el);
         }}
         value={value}
@@ -143,8 +263,11 @@ export function MarkdownEditor({ value, onChange, onBlur, placeholder, className
           resize(e.target);
         }}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
+        onSelect={(e) => setHasSelection(e.currentTarget.selectionStart !== e.currentTarget.selectionEnd)}
         onBlur={() => {
           setEditing(false);
+          setHasSelection(false);
           onBlur?.();
         }}
         autoFocus
@@ -154,4 +277,4 @@ export function MarkdownEditor({ value, onChange, onBlur, placeholder, className
       />
     </div>
   );
-}
+});
