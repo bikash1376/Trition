@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Intel_One_Mono, Newsreader, Yesteryear } from "next/font/google";
+import { Cousine, Geist, Geist_Mono, Newsreader, Yesteryear } from "next/font/google";
 import Script from "next/script";
 import { Databuddy } from "@databuddy/sdk/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,9 +28,10 @@ const newsreader = Newsreader({
   subsets: ["latin"],
 });
 
-const intelOneMono = Intel_One_Mono({
-  variable: "--font-intel-one-mono",
+const cousine = Cousine({
+  variable: "--font-cousine",
   subsets: ["latin"],
+  weight: ["400", "700"],
 });
 
 const DESCRIPTION = "A Notion-style workspace that uses Trello as its database and storage.";
@@ -66,7 +67,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`dark ${geistSans.variable} ${geistMono.variable} ${yesteryear.variable} ${newsreader.variable} ${intelOneMono.variable} h-full antialiased`}
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${yesteryear.variable} ${newsreader.variable} ${cousine.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Script id="theme-init" strategy="beforeInteractive">

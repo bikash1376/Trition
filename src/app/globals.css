@@ -169,52 +169,54 @@
   border-style: dashed;
 }
 
-/* "terminal" — Intel One Mono, black-on-green hacker theme */
+/* "terminal" — Cousine, black-on-green hacker theme */
 .theme-terminal {
-  --background: #0a0d08;
+  --background: #060a07;
   --foreground: #c6d98f;
   --card: #0f130a;
   --card-foreground: #c6d98f;
   --popover: #0f130a;
   --popover-foreground: #c6d98f;
-  --primary: #3def7a;
-  --primary-foreground: #0a0d08;
+  --primary: #34ca67;
+  --primary-foreground: #060a07;
   --secondary: #3a4a1a;
   --secondary-foreground: #1a2410;
   --secondary-border: #55661f;
   --muted: #12160d;
   --muted-foreground: #7c8a54;
   --accent: #3a4a1a;
-  --accent-foreground: #3def7a;
+  --accent-foreground: #34ca67;
   --destructive: #ff6b4a;
   --border: rgba(198, 217, 143, 0.16);
   --input: rgba(198, 217, 143, 0.2);
-  --ring: #3def7a;
+  --ring: #34ca67;
   --chart-1: #ff6b4a;
-  --chart-2: #3def7a;
+  --chart-2: #34ca67;
   --chart-3: #7fd97a;
   --chart-4: #e8c23d;
   --chart-5: #6ddbb8;
   --sidebar: #0d1109;
   --sidebar-foreground: #b9c98a;
-  --sidebar-primary: #3def7a;
-  --sidebar-primary-foreground: #0a0d08;
+  --sidebar-primary: #34ca67;
+  --sidebar-primary-foreground: #060a07;
   --sidebar-accent: #16200d;
   --sidebar-accent-foreground: #c6d98f;
   --sidebar-border: rgba(198, 217, 143, 0.14);
-  --sidebar-ring: #3def7a;
-  --scrollbar-thumb: rgba(61, 239, 122, 0.22);
-  --scrollbar-thumb-hover: rgba(61, 239, 122, 0.38);
+  --sidebar-ring: #34ca67;
+  --scrollbar-thumb: rgba(52, 202, 103, 0.22);
+  --scrollbar-thumb-hover: rgba(52, 202, 103, 0.38);
 }
 
 /* Tailwind's `@theme inline` bakes --font-sans/--font-label into the compiled
    utility at build time, so redeclaring those variables above doesn't reach
    elements using the `font-sans`/`font-heading` utilities — force it directly
-   on every element instead, including editable block content. */
+   on every element instead, including editable block content. The logo
+   (.font-script) and existing Newsreader labels (.font-label) are exempt and
+   keep their own fonts. */
 .theme-terminal,
-.theme-terminal * {
-  font-family: var(--font-intel-one-mono) !important;
-  font-weight: 300 !important;
+.theme-terminal *:not(.font-script):not(.font-label) {
+  font-family: var(--font-cousine) !important;
+  font-weight: 400 !important;
 }
 
 .theme-terminal h1,
@@ -226,7 +228,7 @@
 .theme-terminal .font-heading,
 .theme-terminal [data-slot="dialog-title"],
 .theme-terminal [data-slot="card-title"] {
-  font-weight: 400 !important;
+  font-weight: 700 !important;
 }
 
 @layer base {
