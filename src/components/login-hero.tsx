@@ -21,11 +21,13 @@ export function LoginHero({ demoEnabled }: LoginHeroProps) {
     const root = document.documentElement;
     const hadDark = root.classList.contains("dark");
     const hadExp = root.classList.contains("theme-exp");
+    const hadTerminal = root.classList.contains("theme-terminal");
     root.classList.add("dark");
-    root.classList.remove("theme-exp");
+    root.classList.remove("theme-exp", "theme-terminal");
     return () => {
       root.classList.toggle("dark", hadDark);
       root.classList.toggle("theme-exp", hadExp);
+      root.classList.toggle("theme-terminal", hadTerminal);
     };
   }, []);
 

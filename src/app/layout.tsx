@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Newsreader, Yesteryear } from "next/font/google";
+import { Geist, Geist_Mono, JetBrains_Mono, Newsreader, Yesteryear } from "next/font/google";
 import Script from "next/script";
 import { Databuddy } from "@databuddy/sdk/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +25,11 @@ const yesteryear = Yesteryear({
 
 const newsreader = Newsreader({
   variable: "--font-newsreader",
+  subsets: ["latin"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -61,7 +66,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`dark ${geistSans.variable} ${geistMono.variable} ${yesteryear.variable} ${newsreader.variable} h-full antialiased`}
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${yesteryear.variable} ${newsreader.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Script id="theme-init" strategy="beforeInteractive">
@@ -69,14 +74,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             var root = document.documentElement;
             if (location.pathname === '/login') {
               root.classList.add('dark');
-              root.classList.remove('theme-exp');
+              root.classList.remove('theme-exp', 'theme-terminal');
             } else {
               var t = localStorage.getItem('${THEME_STORAGE_KEY}');
               if (t === 'light') {
-                root.classList.remove('dark');
+                root.classList.remove('dark', 'theme-exp', 'theme-terminal');
               } else if (t === 'exp') {
-                root.classList.remove('dark');
+                root.classList.remove('dark', 'theme-terminal');
                 root.classList.add('theme-exp');
+              } else if (t === 'terminal') {
+                root.classList.remove('dark', 'theme-exp');
+                root.classList.add('theme-terminal');
               }
             }
           } catch (e) {}`}

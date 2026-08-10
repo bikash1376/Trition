@@ -1,7 +1,7 @@
 "use client";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Moon02Icon, Settings02Icon, Sun03Icon, TestTube01Icon } from "@hugeicons/core-free-icons";
+import { Moon02Icon, Settings02Icon, Sun03Icon, TerminalIcon, TestTube01Icon } from "@hugeicons/core-free-icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/theme";
@@ -49,6 +49,15 @@ export function SettingsDialog() {
               >
                 <HugeiconsIcon icon={TestTube01Icon} size={14} />
                 Exp
+              </Button>
+              <Button
+                variant={theme === "terminal" ? "secondary" : "outline"}
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setTheme("terminal")}
+              >
+                <HugeiconsIcon icon={TerminalIcon} size={14} />
+                Terminal
               </Button>
             </div>
           </div>

@@ -169,6 +169,46 @@
   border-style: dashed;
 }
 
+/* "terminal" — JetBrains Mono, black-on-lime hacker theme */
+.theme-terminal {
+  --font-sans: var(--font-jetbrains-mono);
+  --font-label: var(--font-jetbrains-mono);
+  --background: #0a0d08;
+  --foreground: #c6d98f;
+  --card: #0f130a;
+  --card-foreground: #c6d98f;
+  --popover: #0f130a;
+  --popover-foreground: #c6d98f;
+  --primary: #d7e85a;
+  --primary-foreground: #0a0d08;
+  --secondary: #3a4a1a;
+  --secondary-foreground: #1a2410;
+  --secondary-border: #55661f;
+  --muted: #12160d;
+  --muted-foreground: #7c8a54;
+  --accent: #3a4a1a;
+  --accent-foreground: #d7e85a;
+  --destructive: #ff6b4a;
+  --border: rgba(198, 217, 143, 0.16);
+  --input: rgba(198, 217, 143, 0.2);
+  --ring: #d7e85a;
+  --chart-1: #ff6b4a;
+  --chart-2: #d7e85a;
+  --chart-3: #7fd97a;
+  --chart-4: #e8c23d;
+  --chart-5: #6ddbb8;
+  --sidebar: #0d1109;
+  --sidebar-foreground: #b9c98a;
+  --sidebar-primary: #d7e85a;
+  --sidebar-primary-foreground: #0a0d08;
+  --sidebar-accent: #16200d;
+  --sidebar-accent-foreground: #c6d98f;
+  --sidebar-border: rgba(198, 217, 143, 0.14);
+  --sidebar-ring: #d7e85a;
+  --scrollbar-thumb: rgba(215, 232, 90, 0.22);
+  --scrollbar-thumb-hover: rgba(215, 232, 90, 0.38);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
