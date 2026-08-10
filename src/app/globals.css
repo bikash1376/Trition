@@ -323,7 +323,7 @@
   z-index: 0;
   display: inline-block;
   border-radius: var(--radius-md);
-  padding: 0.2em 0.5em;
+  padding: 0.05em 0.3em;
   color: var(--accent-foreground);
   --mark-fill: var(--accent);
   --mark-border-color: var(--accent);
@@ -348,7 +348,7 @@
   content: "";
   position: absolute;
   z-index: -2;
-  inset: -1.5px;
+  inset: -1px;
   border-radius: inherit;
   background: conic-gradient(
     from var(--mark-border-angle),
