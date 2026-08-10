@@ -325,20 +325,24 @@
   color: #ffffff;
 }
 
-/* A soft specular sheen sweeping across the pill's surface (not a border/ring) —
-   dark & terminal only, clipped to the pill's own rounded shape. */
+/* A soft specular sheen tracing the pill's rounded edge (not a border/ring, and
+   not a spotlight radiating from the center) — dark & terminal only. A conic
+   gradient always fans out from its own center, so a radial mask blanks out
+   the middle, leaving only a moving glow near the rim. */
 .dark .prose-daspace mark::before,
 .theme-terminal .prose-daspace mark::before {
   content: "";
   position: absolute;
-  inset: -50%;
+  inset: 0;
   background: conic-gradient(
     from var(--mark-border-angle),
     transparent 0deg,
-    rgba(255, 255, 255, 0.7) 12deg,
-    transparent 45deg,
+    rgba(255, 255, 255, 0.9) 20deg,
+    transparent 70deg,
     transparent 360deg
   );
+  mask: radial-gradient(ellipse, transparent 55%, black 72%, black 100%);
+  -webkit-mask: radial-gradient(ellipse, transparent 55%, black 72%, black 100%);
   animation: mark-border-spin 3s linear infinite;
   mix-blend-mode: screen;
   pointer-events: none;
