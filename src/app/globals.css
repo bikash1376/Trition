@@ -323,7 +323,7 @@
   z-index: 0;
   display: inline-block;
   border-radius: var(--radius-md);
-  padding: 0.05em 0.3em;
+  padding: 0.001em 0.2em;
   color: var(--accent-foreground);
   --mark-fill: var(--accent);
   --mark-border-color: var(--accent);
@@ -353,7 +353,7 @@
   background: conic-gradient(
     from var(--mark-border-angle),
     var(--mark-border-color),
-    rgba(255, 255, 255, 0.5),
+    rgba(168, 241, 152, 0.653),
     var(--mark-border-color)
   );
   animation: mark-border-spin 3s linear infinite;
