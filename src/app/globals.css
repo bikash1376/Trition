@@ -337,12 +337,12 @@
   background: conic-gradient(
     from var(--mark-border-angle),
     transparent 0deg,
-    rgba(255, 255, 255, 0.4) 10deg,
+    rgba(255, 255, 255, 0.25) 10deg,
     transparent 28deg,
     transparent 360deg
   );
-  mask: radial-gradient(ellipse, transparent 64%, black 82%, black 100%);
-  -webkit-mask: radial-gradient(ellipse, transparent 64%, black 82%, black 100%);
+  mask: radial-gradient(ellipse, transparent 52%, black 68%, black 84%, transparent 98%);
+  -webkit-mask: radial-gradient(ellipse, transparent 52%, black 68%, black 84%, transparent 98%);
   animation: mark-border-spin 3s linear infinite;
   mix-blend-mode: screen;
   pointer-events: none;
