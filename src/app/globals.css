@@ -171,8 +171,6 @@
 
 /* "terminal" — Intel One Mono, black-on-green hacker theme */
 .theme-terminal {
-  --font-sans: var(--font-intel-one-mono);
-  --font-label: var(--font-intel-one-mono);
   --background: #0a0d08;
   --foreground: #c6d98f;
   --card: #0f130a;
@@ -207,6 +205,28 @@
   --sidebar-ring: #3def7a;
   --scrollbar-thumb: rgba(61, 239, 122, 0.22);
   --scrollbar-thumb-hover: rgba(61, 239, 122, 0.38);
+}
+
+/* Tailwind's `@theme inline` bakes --font-sans/--font-label into the compiled
+   utility at build time, so redeclaring those variables above doesn't reach
+   elements using the `font-sans`/`font-heading` utilities — force it directly
+   on every element instead, including editable block content. */
+.theme-terminal,
+.theme-terminal * {
+  font-family: var(--font-intel-one-mono) !important;
+  font-weight: 300 !important;
+}
+
+.theme-terminal h1,
+.theme-terminal h2,
+.theme-terminal h3,
+.theme-terminal h4,
+.theme-terminal h5,
+.theme-terminal h6,
+.theme-terminal .font-heading,
+.theme-terminal [data-slot="dialog-title"],
+.theme-terminal [data-slot="card-title"] {
+  font-weight: 400 !important;
 }
 
 @layer base {
