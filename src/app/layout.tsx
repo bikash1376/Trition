@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, JetBrains_Mono, Newsreader, Yesteryear } from "next/font/google";
+import { Geist, Geist_Mono, Intel_One_Mono, Newsreader, Yesteryear } from "next/font/google";
 import Script from "next/script";
 import { Databuddy } from "@databuddy/sdk/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,8 +28,8 @@ const newsreader = Newsreader({
   subsets: ["latin"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
+const intelOneMono = Intel_One_Mono({
+  variable: "--font-intel-one-mono",
   subsets: ["latin"],
 });
 
@@ -66,7 +66,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`dark ${geistSans.variable} ${geistMono.variable} ${yesteryear.variable} ${newsreader.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${yesteryear.variable} ${newsreader.variable} ${intelOneMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Script id="theme-init" strategy="beforeInteractive">
