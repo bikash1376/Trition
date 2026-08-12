@@ -32,6 +32,7 @@ export default async function HomeListPage({ params }: { params: Promise<{ listI
 
   const activeList = lists.find((list) => list.id === listId);
   if (!activeList || activeList.name === HOME_LIST_NAME) redirect("/home");
+  if (settings.canvasListIds.includes(listId)) redirect(`/canvas?listId=${listId}`);
 
   const pages = lists.filter((list) => list.name !== HOME_LIST_NAME && !settings.tableListIds.includes(list.id));
   const pageNames = Object.fromEntries(pages.map((list) => [list.id, list.name]));

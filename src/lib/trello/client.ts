@@ -132,6 +132,15 @@ export function getBoardLists(boardId: string, token: string) {
   });
 }
 
+export function getListCardsWithAttachments(listId: string, token: string) {
+  return trelloFetch<TrelloCard[]>(`/lists/${listId}/cards`, token, {
+    fields: "name,desc,idList,idBoard,idMembers,labels,due,closed,shortUrl",
+    attachments: "true",
+    attachment_fields: "name,url,mimeType,bytes",
+    attachments_limit: "1000",
+  });
+}
+
 export function getBoardMembers(boardId: string, token: string) {
   return cached(`board-members:${boardId}:${token}`, TTL, () =>
     trelloFetch<TrelloMember[]>(`/boards/${boardId}/members`, token, {

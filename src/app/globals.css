@@ -180,8 +180,9 @@
   --primary: #34ca67;
   --primary-foreground: #ffffff;
   --secondary: #3a4a1a;
-  --secondary-foreground: #1a2410;
-  --secondary-border: #55661f;
+  --secondary: rgba(52,202,103,0.08);
+  --secondary-foreground: #34ca67;
+  --secondary-border: rgba(52,202,103,0.28);
   --muted: #12160d;
   --muted-foreground: #7c8a54;
   --accent: #3a4a1a;

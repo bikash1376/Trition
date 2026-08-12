@@ -17,9 +17,13 @@ export async function GET() {
       getBoard(personalBoard.id, token),
     ]);
     const { settings } = parseWorkspaceSettings(board.desc);
+    const canvasListIds = settings.canvasListIds ?? [];
     return NextResponse.json({
-      lists: lists.filter((l) => l.name !== HOME_LIST_NAME && !settings.tableListIds.includes(l.id)),
+      lists: lists
+        .filter((l) => l.name !== HOME_LIST_NAME && !settings.tableListIds.includes(l.id))
+        .map((list) => ({ ...list, isCanvas: canvasListIds.includes(list.id) })),
       boardId: personalBoard.id,
+      canvasListIds,
     });
   } catch (err) {
     if (err instanceof TrelloApiError) return NextResponse.json({ error: err.message }, { status: err.status });

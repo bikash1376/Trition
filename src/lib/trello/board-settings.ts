@@ -4,11 +4,15 @@ export interface WorkspaceSettings {
   // excluded from sidebar navigation and "link to an existing page" search. Page blocks'
   // backing lists are deliberately NOT tracked here; those are meant to be real pages.
   tableListIds: string[];
+  // Lists created as a Canvas command — these are real pages but should open in the shared
+  // canvas editor instead of the normal page view.
+  canvasListIds: string[];
 }
 
 export const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   showLastEditedColumn: true,
   tableListIds: [],
+  canvasListIds: [],
 };
 
 // Hidden marker prepended to the board's own `desc` field — same trick used for block/column/props

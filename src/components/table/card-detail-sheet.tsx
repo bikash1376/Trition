@@ -68,9 +68,16 @@ export function CardDetailSheet({
     let cancelled = false;
 
     fetch(`/api/cards/${cardId}`)
-      .then((res) => res.json())
-      .then(async (data: CardDetail) => {
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then(async (data: CardDetail | null) => {
         if (cancelled) return;
+        if (!data || !data.card) {
+          setDetail(null);
+          return;
+        }
         setDetail(data);
         setName(data.card.name);
         setDesc(data.card.desc);
@@ -294,7 +301,7 @@ export function CardDetailSheet({
                     disabled={commentText.trim().length === 0}
                     onClick={submitComment}
                   >
-                    <HugeiconsIcon icon={SentIcon} size={16} />
+                    <HugeiconsIcon icon={SentIcon} size={16} className="text-current" />
                   </Button>
                 </div>
                 <div className="flex flex-col gap-3">
@@ -314,13 +321,11 @@ export function CardDetailSheet({
 
               <Separator />
 
-              <button
-                type="button"
-                onClick={() => setArchiveConfirmOpen(true)}
-                className="self-start text-sm text-muted-foreground underline-offset-4 hover:text-destructive hover:underline"
-              >
-                Archive card
-              </button>
+              <div className="flex items-center gap-2">
+                <Button variant="destructive" onClick={() => setArchiveConfirmOpen(true)}>
+                  Archive card
+                </Button>
+              </div>
             </div>
           </>
         ) : (

@@ -34,8 +34,12 @@ export function SidebarPageLink({ href, listId, name, active, onDeleted, onRenam
     setDeleting(true);
     onDeleted(listId);
     if (active) {
-      const pageHrefBase = href.slice(0, href.indexOf("/l/"));
-      router.push(pageHrefBase || "/home");
+      if (href.startsWith("/canvas")) {
+        router.push("/home");
+      } else {
+        const pageHrefBase = href.slice(0, href.indexOf("/l/"));
+        router.push(pageHrefBase || "/home");
+      }
     }
     fetch(`/api/lists/${listId}`, { method: "DELETE" });
   }

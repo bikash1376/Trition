@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
-import { AiMagicIcon, BookmarkIcon, File01Icon, Image02Icon, Table01Icon, TextIcon } from "@hugeicons/core-free-icons";
+import { AiMagicIcon, BookmarkIcon, File01Icon, Image02Icon, Table01Icon, TextIcon, ArtboardToolIcon } from "@hugeicons/core-free-icons";
+import { Spinner } from "@/components/ui/spinner";
 import { serializeBlock } from "@/lib/trello/blocks";
 import { generateLorem } from "@/lib/lorem";
 import { useSidebarRefresh } from "@/lib/sidebar-refresh";
 import type { TrelloCard, TrelloList } from "@/lib/trello/types";
 
-type PendingType = "page" | "bookmark" | "image" | "table" | "lorem" | null;
+type PendingType = "page" | "bookmark" | "image" | "table" | "lorem" | "canvas" | null;
 
 interface BlockOption {
-  type: "text" | "page" | "bookmark" | "image" | "table" | "lorem";
+  type: "text" | "page" | "bookmark" | "image" | "table" | "lorem" | "canvas";
   label: string;
   icon: IconSvgElement;
 }
@@ -22,6 +24,7 @@ const OPTIONS: BlockOption[] = [
   { type: "table", label: "Table", icon: Table01Icon },
   { type: "bookmark", label: "Bookmark", icon: BookmarkIcon },
   { type: "image", label: "Image", icon: Image02Icon },
+  { type: "canvas", label: "Canvas", icon: ArtboardToolIcon },
   { type: "lorem", label: "Lorem ipsum", icon: AiMagicIcon },
 ];
 
@@ -46,9 +49,11 @@ export function BlockComposer({
   onPending,
   onPendingResolved,
 }: BlockComposerProps) {
+  const router = useRouter();
   const { refreshSidebar } = useSidebarRefresh();
   const [value, setValue] = useState("");
   const [pendingType, setPendingType] = useState<PendingType>(null);
+  const [isSubmittingCanvas, setIsSubmittingCanvas] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -125,6 +130,30 @@ export function BlockComposer({
       });
   }
 
+  async function submitCanvas(name: string) {
+    if (!name.trim()) return;
+    setIsSubmittingCanvas(true);
+    try {
+      const res = await fetch(`/api/boards/${boardId}/pages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, type: "canvas" }),
+      });
+      const data = res.ok ? await res.json() : null;
+      if (!data?.list) return;
+      try {
+        refreshSidebar();
+      } catch {}
+      router.push(`/canvas?listId=${data.list.id}&boardId=${boardId}`);
+    } catch (err) {
+      console.error("Canvas creation failed:", err);
+    } finally {
+      setIsSubmittingCanvas(false);
+      setPendingType(null);
+      setValue("");
+    }
+  }
+
   function submitTable(name: string) {
     if (!name.trim()) return;
     setValue("");
@@ -198,6 +227,13 @@ export function BlockComposer({
       setValue(precedingText ? `${precedingText}\n` : "");
       return;
     }
+    if (option.type === "canvas") {
+      // use the built-in name entry UI for canvas
+      submitText(precedingText);
+      setPendingType("canvas");
+      setValue("");
+      return;
+    }
     submitText(precedingText); // commit text typed before this line as its own block
     setPendingType(option.type);
     setValue("");
@@ -209,7 +245,7 @@ export function BlockComposer({
       setValue("");
       return;
     }
-    if (e.key === "Backspace" && value === "") {
+    if (e.key === "Backspace" && value.trim() === "") {
       setPendingType(null);
       return;
     }
@@ -221,6 +257,10 @@ export function BlockComposer({
     }
     if (pendingType === "table") {
       submitTable(value);
+      return;
+    }
+    if (pendingType === "canvas") {
+      submitCanvas(value);
       return;
     }
     if (pendingType === "bookmark") {
@@ -260,6 +300,8 @@ export function BlockComposer({
   const placeholder =
     pendingType === "page"
       ? "Page name…"
+       : pendingType === "canvas"
+         ? "Canvas name…"
       : pendingType === "table"
         ? "Table name…"
         : pendingType === "bookmark"
@@ -271,7 +313,7 @@ export function BlockComposer({
               : "Type '/' for commands";
 
   const isNameEntry =
-    pendingType === "page" || pendingType === "table" || pendingType === "bookmark" || pendingType === "lorem";
+    pendingType === "page" || pendingType === "table" || pendingType === "bookmark" || pendingType === "lorem" || pendingType === "canvas";
 
   return (
     <div className="relative mt-2">
@@ -283,6 +325,8 @@ export function BlockComposer({
           autoFocus
           inputMode={pendingType === "lorem" ? "numeric" : undefined}
           placeholder={placeholder}
+          onBlur={() => setPendingType(null)}
+          disabled={isSubmittingCanvas}
           className="w-full border-none bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground"
         />
       ) : (
@@ -310,6 +354,12 @@ export function BlockComposer({
           e.target.value = "";
         }}
       />
+      {pendingType === "canvas" && isSubmittingCanvas && (
+        <div className="pointer-events-none absolute right-3 top-3 flex items-center gap-2 rounded-full bg-background/80 px-2 py-1 text-xs text-muted-foreground shadow-sm">
+          <Spinner className="size-3" />
+          Creating canvas…
+        </div>
+      )}
       {menuOpen && (
         <div className="absolute top-full left-0 z-10 mt-1 w-48 overflow-hidden rounded-md border border-border bg-popover py-1 shadow-md">
           {filteredOptions.map((option) => (

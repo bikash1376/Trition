@@ -44,6 +44,7 @@ export interface TrelloCard {
   due: string | null;
   closed: boolean;
   shortUrl: string;
+  attachments?: TrelloAttachment[];
 }
 
 export interface TrelloAttachment {

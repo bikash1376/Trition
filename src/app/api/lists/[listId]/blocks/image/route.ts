@@ -18,7 +18,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ lis
     const card = await createCard(listId, file.name || "Image", token, serializeBlock("image", null, ""));
     const attachment = await uploadCardAttachment(card.id, file, token);
     const updated = await updateCardDesc(card.id, serializeBlock("image", attachment.id, ""), token);
-    return NextResponse.json({ card: updated });
+    return NextResponse.json({ card: { ...updated, attachments: [attachment] } });
   } catch (err) {
     if (err instanceof TrelloApiError) return NextResponse.json({ error: err.message }, { status: err.status });
     throw err;

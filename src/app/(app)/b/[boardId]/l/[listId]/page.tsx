@@ -31,6 +31,7 @@ export default async function ListPage({
 
   const activeList = lists.find((list) => list.id === listId);
   if (!activeList || activeList.name === HOME_LIST_NAME) redirect(`/b/${boardId}`);
+  if (settings.canvasListIds.includes(listId)) redirect(`/canvas?listId=${listId}&boardId=${boardId}`);
 
   const pages = lists.filter((list) => list.name !== HOME_LIST_NAME && !settings.tableListIds.includes(list.id));
   const pageNames = Object.fromEntries(pages.map((list) => [list.id, list.name]));

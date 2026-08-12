@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Archive04Icon,
@@ -11,6 +11,7 @@ import {
   Home01Icon,
   Logout03Icon,
   UserLock01Icon,
+  File01Icon,
 } from "@hugeicons/core-free-icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -37,8 +38,27 @@ interface WorkspaceSidebarShellProps {
   boards: TrelloBoard[];
 }
 
-function deriveContext(pathname: string) {
+function deriveContext(pathname: string, searchParams: URLSearchParams | null) {
   const segments = pathname.split("/").filter(Boolean);
+  if (segments[0] === "canvas") {
+    const boardId = searchParams?.get("boardId");
+    if (boardId) {
+      return {
+        kind: "board" as const,
+        boardId,
+        activeListId: searchParams?.get("listId") ?? undefined,
+        pageHrefBase: `/b/${boardId}`,
+        pagesUrl: `/api/boards/${boardId}/pages`,
+      };
+    }
+    return {
+      kind: "home" as const,
+      activeListId: searchParams?.get("listId") ?? undefined,
+      pageHrefBase: "/home",
+      pagesUrl: "/api/home/pages",
+    };
+  }
+
   if (segments[0] === "b" && segments[1]) {
     return {
       kind: "board" as const,
@@ -58,13 +78,18 @@ function deriveContext(pathname: string) {
 
 export function WorkspaceSidebarShell({ me, boards: initialBoards }: WorkspaceSidebarShellProps) {
   const pathname = usePathname();
-  const context = deriveContext(pathname);
+  const searchParams = useSearchParams();
+  const context = deriveContext(pathname, searchParams);
+  const canvasListId = pathname?.startsWith("/canvas") ? searchParams?.get("listId") : undefined;
+  const activeListId = canvasListId ?? context.activeListId;
   const { nonce } = useSidebarRefresh();
 
   const [boards, setBoards] = useState(initialBoards);
-  const [pagesData, setPagesData] = useState<{ contextKey: string; lists: TrelloList[]; boardId: string } | null>(
-    null,
-  );
+  const [pagesData, setPagesData] = useState<{
+    contextKey: string;
+    lists: (TrelloList & { isCanvas?: boolean })[];
+    boardId: string;
+  } | null>(null);
 
   useEffect(() => {
     if (nonce === 0) return;
@@ -92,6 +117,7 @@ export function WorkspaceSidebarShell({ me, boards: initialBoards }: WorkspaceSi
 
   const homeActive = context.kind === "home";
   const activeBoardId = context.kind === "board" ? context.boardId : undefined;
+  const canvasActive = pathname?.startsWith("/canvas");
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col overflow-hidden rounded-r-[12px] border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
@@ -161,27 +187,33 @@ export function WorkspaceSidebarShell({ me, boards: initialBoards }: WorkspaceSi
               </NewPageButton>
             ) : (
               <nav className="flex flex-col gap-1">
-                {pages.lists.map((list) => (
-                  <SidebarPageLink
-                    key={list.id}
-                    listId={list.id}
-                    href={`${context.pageHrefBase}/l/${list.id}`}
-                    name={list.name}
-                    active={list.id === context.activeListId}
-                    onDeleted={(deletedListId) =>
-                      setPagesData((prev) =>
-                        prev ? { ...prev, lists: prev.lists.filter((l) => l.id !== deletedListId) } : prev,
-                      )
-                    }
-                    onRenamed={(renamedListId, name) =>
-                      setPagesData((prev) =>
-                        prev
-                          ? { ...prev, lists: prev.lists.map((l) => (l.id === renamedListId ? { ...l, name } : l)) }
-                          : prev,
-                      )
-                    }
-                  />
-                ))}
+                {/* Canvas link removed; canvases are created as pages/lists */}
+                {pages.lists.map((list) => {
+                  const href = list.isCanvas
+                    ? `${pathname?.startsWith("/b/") ? "/canvas?boardId=" + pages.boardId + "&listId=" + list.id : "/canvas?listId=" + list.id}`
+                    : `${context.pageHrefBase}/l/${list.id}`;
+                  return (
+                    <SidebarPageLink
+                      key={list.id}
+                      listId={list.id}
+                      href={href}
+                      name={list.name}
+                      active={list.id === activeListId}
+                      onDeleted={(deletedListId) =>
+                        setPagesData((prev) =>
+                          prev ? { ...prev, lists: prev.lists.filter((l) => l.id !== deletedListId) } : prev,
+                        )
+                      }
+                      onRenamed={(renamedListId, name) =>
+                        setPagesData((prev) =>
+                          prev
+                            ? { ...prev, lists: prev.lists.map((l) => (l.id === renamedListId ? { ...l, name } : l)) }
+                            : prev,
+                        )
+                      }
+                    />
+                  );
+                })}
               </nav>
             )}
           </div>
