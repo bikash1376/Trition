@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTrelloToken } from "@/lib/trello/session";
-import { getListCardsWithAttachments, TrelloApiError } from "@/lib/trello/client";
+import { getListCards, TrelloApiError } from "@/lib/trello/client";
 import { parseBlock } from "@/lib/trello/blocks";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ listId: string }> }) {
@@ -9,13 +9,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ lis
   if (!token) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   try {
-    const cards = await getListCardsWithAttachments(listId, token);
+    const cards = await getListCards(listId, token);
     const images = cards
       .map((card) => {
         const block = parseBlock(card.desc);
         if (block.type !== "image" || !block.ref) return null;
-        const attachment = card.attachments?.find((a) => a.id === block.ref);
-        if (!attachment) return null;
         let meta = { x: 100, y: 100, scale: 1 };
         try {
           const parsed = JSON.parse(block.content || "{}");
@@ -27,12 +25,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ lis
         }
         return {
           id: card.id,
-          src: `/api/attachments/${card.id}/${attachment.id}`,
+          // trust the ref embedded in the card desc — the same source of
+          // truth the normal image block uses — instead of requiring a
+          // separate nested-attachment lookup to succeed
+          src: `/api/attachments/${card.id}/${block.ref}`,
           x: meta.x,
           y: meta.y,
           scale: meta.scale,
           cardId: card.id,
-          attachmentId: attachment.id,
+          attachmentId: block.ref,
         };
       })
       .filter(Boolean);

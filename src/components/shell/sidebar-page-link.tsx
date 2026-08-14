@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Delete02Icon, File01Icon, PencilEdit02Icon } from "@hugeicons/core-free-icons";
+import { ArtboardToolIcon, Delete02Icon, File01Icon, PencilEdit02Icon } from "@hugeicons/core-free-icons";
 import { NavLinkSpinner } from "@/components/shell/nav-link-spinner";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 
@@ -13,11 +13,12 @@ interface SidebarPageLinkProps {
   listId: string;
   name: string;
   active: boolean;
+  isCanvas?: boolean;
   onDeleted: (listId: string) => void;
   onRenamed: (listId: string, name: string) => void;
 }
 
-export function SidebarPageLink({ href, listId, name, active, onDeleted, onRenamed }: SidebarPageLinkProps) {
+export function SidebarPageLink({ href, listId, name, active, isCanvas, onDeleted, onRenamed }: SidebarPageLinkProps) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -92,7 +93,7 @@ export function SidebarPageLink({ href, listId, name, active, onDeleted, onRenam
       }`}
     >
       <Link href={href} className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5">
-        <HugeiconsIcon icon={File01Icon} size={16} className="shrink-0" />
+        <HugeiconsIcon icon={isCanvas ? ArtboardToolIcon : File01Icon} size={16} className="shrink-0" />
         <span className="truncate">{name}</span>
         <NavLinkSpinner />
       </Link>

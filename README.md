@@ -101,6 +101,7 @@ There's no app database — everything is derived live from Trello, using a few 
 | Cover image | A hidden sentinel card in the workspace's home list, holding the attachment id + configured height |
 | Workspace settings (e.g. "show Last Edited column", which lists back a Table block's own list) | A hidden marker on the **board's own `desc` field** (`src/lib/trello/board-settings.ts`) — workspace-wide, not per-list |
 | "Home" (personal space) | A dedicated private board per user, `DaSpace Personal` |
+| Canvas page (freeform image board) | A List flagged via `canvasListIds` in board settings; each pasted/uploaded image is its own image-block card, with x/y/scale kept in a hidden JSON metadata block |
 
 Everywhere a marker is used, reads strip it before handing data to the client and writes re-merge it so an unrelated edit (e.g. changing a card's description) can never clobber the hidden metadata.
 
@@ -110,6 +111,7 @@ Everywhere a marker is used, reads strip it before handing data to the client an
 - `/home`, `/home/l/[listId]` — the personal space and its pages.
 - `/b/[boardId]` — a workspace's home canvas (blocks + optional table, Invite/Members/Board Settings/"In lobby" activity in the header).
 - `/b/[boardId]/l/[listId]` — a page inside a workspace.
+- `/canvas?listId=...` (optionally `&boardId=...`) — a freeform image canvas page (paste/upload images, drag to arrange).
 - `src/app/(app)/layout.tsx` — shared shell (sidebar + `AppShell`) for all four routes above, so navigating between them doesn't remount the sidebar.
 - `/api/**` — route handlers the client calls for every mutation and detail fetch; the Trello key/token never reach the browser.
 

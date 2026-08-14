@@ -199,6 +199,7 @@ export function WorkspaceSidebarShell({ me, boards: initialBoards }: WorkspaceSi
                       href={href}
                       name={list.name}
                       active={list.id === activeListId}
+                      isCanvas={list.isCanvas}
                       onDeleted={(deletedListId) =>
                         setPagesData((prev) =>
                           prev ? { ...prev, lists: prev.lists.filter((l) => l.id !== deletedListId) } : prev,

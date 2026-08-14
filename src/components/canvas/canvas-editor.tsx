@@ -2,9 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ClipboardIcon, ArtboardToolIcon } from "@hugeicons/core-free-icons";
+import { Delete02Icon, FilePasteIcon, ImageAdd01Icon } from "@hugeicons/core-free-icons";
 import { Spinner } from "@/components/ui/spinner";
 import { useSidebarRefresh } from "@/lib/sidebar-refresh";
+
+// Every image gets the same on-canvas footprint at scale 1 (letterboxed to
+// preserve aspect ratio) so a huge photo doesn't dwarf a small screenshot.
+const BASE_IMAGE_SIZE = 220;
 
 type CanvasImage = {
   id: string;
@@ -96,8 +100,22 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
         const data = await uploadRes.json();
         const card = data?.card;
         const attachmentId = card?.attachments?.[0]?.id ?? null;
-        // reconcile local image with card info
-        setImages((prev) => prev.map((it) => (it.id === id ? { ...it, pending: false, cardId: card?.id ?? null, attachmentId } : it)));
+        // reconcile local image with card info, and switch over to the
+        // server-fetched URL so the upload is actually verified round-trip
+        // instead of just showing the local blob forever
+        setImages((prev) =>
+          prev.map((it) =>
+            it.id === id
+              ? {
+                  ...it,
+                  pending: false,
+                  cardId: card?.id ?? null,
+                  attachmentId,
+                  src: card?.id && attachmentId ? `/api/attachments/${card.id}/${attachmentId}` : it.src,
+                }
+              : it,
+          ),
+        );
       } catch (err) {
         // leave pending false if failed
         setImages((prev) => prev.map((it) => (it.id === id ? { ...it, pending: false } : it)));
@@ -106,6 +124,23 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
     [selectedBoard, initialListId],
   );
   const { refreshSidebar } = useSidebarRefresh();
+
+  const pasteFromClipboard = useCallback(async () => {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find((t) => t.startsWith("image/"));
+        if (!imageType) continue;
+        const blob = await item.getType(imageType);
+        const reader = new FileReader();
+        reader.onload = () => addImage(String(reader.result));
+        reader.readAsDataURL(blob);
+        return;
+      }
+    } catch {
+      // clipboard read denied or empty — nothing to paste
+    }
+  }, [addImage]);
 
   // Handle paste events to accept images (files or dataURLs)
   useEffect(() => {
@@ -259,12 +294,16 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
   useEffect(() => {
     const id = setInterval(() => {
       images.forEach((img) => {
-        if (!img.cardId) return;
+        if (!img.cardId || !img.attachmentId) return;
         const meta = { x: img.x, y: img.y, scale: img.scale };
+        // Must include type/ref so this hits the generic read-modify-write
+        // path in the PATCH route — omitting them trips its plain-text-block
+        // fast path, which stamps the card back to type=text and drops the
+        // image ref, silently breaking the image on the next fetch.
         fetch(`/api/blocks/${img.cardId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: JSON.stringify({ meta }) }),
+          body: JSON.stringify({ type: "image", ref: img.attachmentId, content: JSON.stringify({ meta }) }),
         }).catch(() => {});
       });
     }, 5000);
@@ -273,15 +312,23 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
 
   return (
     <div className="relative h-full w-full bg-background">
-      {/* paste icon top-right */}
-      <div className="absolute right-4 top-4 z-50">
+      {/* upload / paste icons top-right — aligned with the sidebar toggle icon's top-3, h-7 w-7 */}
+      <div className="absolute right-3 top-3 z-50 flex items-center gap-1">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          title="Paste or upload image"
-          className="rounded-md bg-muted/30 p-2 hover:bg-muted"
+          title="Upload image from computer"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
         >
-          <HugeiconsIcon icon={ClipboardIcon} size={20} />
+          <HugeiconsIcon icon={ImageAdd01Icon} size={16} />
+        </button>
+        <button
+          type="button"
+          onClick={pasteFromClipboard}
+          title="Paste image from clipboard"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <HugeiconsIcon icon={FilePasteIcon} size={16} />
         </button>
         <input
           ref={fileInputRef}
@@ -325,28 +372,39 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
               style={{ left: img.x, top: img.y }}
               className="group absolute touch-none select-none z-10"
             >
-              <div className="relative">
+              <div className="relative" style={{ width: BASE_IMAGE_SIZE * img.scale, height: BASE_IMAGE_SIZE * img.scale }}>
                 <img
                   src={img.src}
                   alt="pasted"
                   draggable={false}
                   onClick={() => setSelectedImageId(img.id)}
-                  style={{ transform: `scale(${img.scale})`, transformOrigin: "top left", display: "block" }}
-                  className={`block max-w-none max-h-none ${selectedImageId === img.id ? "ring-2 ring-primary" : ""}`}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                    display: "block",
+                  }}
+                  className={`cursor-pointer rounded-md ${selectedImageId === img.id ? "ring-2 ring-primary" : ""}`}
                 />
                 {img.pending && (
                   <div className="absolute inset-0 flex items-center justify-center rounded-md bg-black/30 px-2 text-[11px] font-medium text-white pointer-events-none">
                     Uploading…
                   </div>
                 )}
-                <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                {/* counter-scale so controls stay a constant, clickable screen size
+                    regardless of canvas zoom */}
+                <div
+                  className="absolute right-1 top-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100"
+                  style={{ transform: `scale(${1 / scaleCanvas})`, transformOrigin: "top right" }}
+                >
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       changeScale(img.id, 1.1);
                     }}
-                    className="rounded bg-muted/60 px-2 py-1 text-xs"
+                    title="Zoom in"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted/60 text-xs hover:bg-muted"
                   >
                     +
                   </button>
@@ -356,7 +414,8 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
                       e.stopPropagation();
                       changeScale(img.id, 0.9);
                     }}
-                    className="rounded bg-muted/60 px-2 py-1 text-xs"
+                    title="Zoom out"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted/60 text-xs hover:bg-muted"
                   >
                     −
                   </button>
@@ -366,9 +425,10 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
                       e.stopPropagation();
                       await removeImage(img.id);
                     }}
-                    className="rounded bg-destructive/80 px-2 py-1 text-xs text-destructive-foreground"
+                    title="Delete image"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-destructive/80 text-destructive-foreground hover:bg-destructive"
                   >
-                    Delete
+                    <HugeiconsIcon icon={Delete02Icon} size={14} />
                   </button>
                 </div>
               </div>
@@ -384,10 +444,10 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
               await removeImage(selectedImageId);
             }}
             disabled={!selectedImageId}
-            className="rounded-md bg-muted/30 p-2 hover:bg-muted"
+            className="rounded-md bg-muted/30 p-2 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
             title="Delete selected image"
           >
-            <HugeiconsIcon icon={ArtboardToolIcon} size={18} />
+            <HugeiconsIcon icon={Delete02Icon} size={18} />
           </button>
         </div>
       </div>
