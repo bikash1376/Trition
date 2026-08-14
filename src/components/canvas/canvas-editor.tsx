@@ -48,12 +48,12 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
   }, [images]);
 
   const addImage = useCallback(
-    async (src: string, clientX = 100, clientY = 100) => {
+    async (src: string) => {
       const id = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
       const rect = containerRef.current?.getBoundingClientRect();
       // center pasted image in container
-      const cx = rect ? rect.width / 2 : clientX;
-      const cy = rect ? rect.height / 2 : clientY;
+      const cx = rect ? rect.width / 2 : 100;
+      const cy = rect ? rect.height / 2 : 100;
       const centeredX = cx - 64;
       const centeredY = cy - 64;
       // add pending local image (centered)
@@ -154,7 +154,7 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
           if (!file) return;
           const reader = new FileReader();
           reader.onload = () => {
-            addImage(String(reader.result), e.clientX ?? 100, e.clientY ?? 100);
+            addImage(String(reader.result));
           };
           reader.readAsDataURL(file);
           handled = true;
@@ -165,7 +165,7 @@ export function CanvasEditor({ initialListId, initialBoardId }: { initialListId?
       if (!handled) {
         const text = e.clipboardData.getData("text");
         if (text && /(https?:\/\/.+\.(png|jpe?g|gif|webp|svg))/i.test(text)) {
-          addImage(text, e.clientX ?? 100, e.clientY ?? 100);
+          addImage(text);
           handled = true;
         }
       }
