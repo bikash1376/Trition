@@ -147,9 +147,9 @@ export function LandingPage() {
         <footer className={styles.footer}>
           <div className={styles.footRow}>
             <div>
-              Trition is an open-source project by{" "}
+              Project by{" "}
               <a href="https://github.com/bikash1376" target="_blank" rel="noopener" style={{ color: "var(--accent)" }}>
-                bikash1376
+                Bikash
               </a>
               .
             </div>
